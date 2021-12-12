@@ -4,28 +4,30 @@ import java.util.HashSet;
 import java.util.Set;
 
 import dtu.qpms.model.Sequence;
+import dtu.qpms.model.SequenceItemPrinter;
 
-public class PMPMS<T> {
+public class qPMSPM<T> {
 	
-	private int l;
-	private double d;
-	private int n;
-	private double q;
+	private int motifLength;
+	private double motifMaxDistance;
+	private int ngramLength;
+	private double quorum;
 	private Set<Sequence<T>> potentialMotifs;
 	private Set<Sequence<T>> verifiedMotifs;
 	private Set<Sequence<T>> strings;
+	private SequenceItemPrinter<T> printer = null;
 
-	public PMPMS(int l, double d, int n, double q) {
-		this.l = l;
-		this.d = d;
-		this.n = n;
-		this.q = q;
+	public qPMSPM(int l, double d, int n, double q) {
+		this.motifLength = l;
+		this.motifMaxDistance = d;
+		this.ngramLength = n;
+		this.quorum = q;
 		this.potentialMotifs = new HashSet<Sequence<T>>();
 		this.verifiedMotifs = new HashSet<Sequence<T>>();
 		this.strings = new HashSet<Sequence<T>>();
 	}
 	
-	public Set<Sequence<T>> getPotentialMotifs() {
+	public Set<Sequence<T>> getCandidateMotifs() {
 		return potentialMotifs;
 	}
 	
@@ -33,24 +35,27 @@ public class PMPMS<T> {
 		return verifiedMotifs;
 	}
 
-	public Set<Sequence<T>> getStrings() {
-		return strings;
+	public boolean addString(Sequence<T> string) {
+		if (printer == null) {
+			printer = string.getPrinter();
+		}
+		return strings.add(string);
 	}
 	
 	public int getMotifLength() {
-		return l;
+		return motifLength;
 	}
 	
 	public double getMaxDistance() {
-		return d;
+		return motifMaxDistance;
 	}
 	
 	public int getNgramLength() {
-		return n;
+		return ngramLength;
 	}
 	
 	public double getQuorum() {
-		return q;
+		return quorum;
 	}
 
 //	public void generateAlphabet() {
@@ -69,16 +74,17 @@ public class PMPMS<T> {
 		for (Sequence<T> m : potentialMotifs) {
 			double stringsWithMotif = 0;
 			for (Sequence<T> s : strings) {
-				if (verifyMotifInString(s, m, d)) {
+				if (verifyMotifInString(s, m, motifMaxDistance)) {
 					stringsWithMotif++;
 					
 				} else {
-					if (q == 1) {
+					if (quorum == 1) {
 						break;
 					}
 				}
 			}
-			if (stringsWithMotif / strings.size() >= q) {
+			if (stringsWithMotif / strings.size() >= quorum) {
+//				System.out.println(m);
 				verifiedMotifs.add(m);
 			}
 		}
@@ -93,18 +99,21 @@ public class PMPMS<T> {
 		Set<Sequence<T>> ngrams = new HashSet<Sequence<T>>();
 		for (Sequence<T> s : strings) {
 			int stringLength = s.size();
-			if (stringLength >= n) {
-				for (int i = 0; i <= stringLength - n; i++) {
-					ngrams.add(s.substring(i, i + n));
+			if (stringLength >= ngramLength) {
+				for (int i = 0; i <= stringLength - ngramLength; i++) {
+					ngrams.add(s.substring(i, i + ngramLength));
 				}
 			}
 		}
 		// generate motifs
-		recursiveGenerateMotif(ngrams, new Sequence<T>(), l/n);
+		recursiveGenerateMotif(ngrams, new Sequence<T>(printer), motifLength/ngramLength);
+//		System.out.println(ngrams);
+//		System.out.println(potentialMotifs);
 	}
 	
 	private void recursiveGenerateMotif(Set<Sequence<T>> ngrams, Sequence<T> output, int l) {
 		if (l <= 0) {
+//			System.out.println(output);
 			this.potentialMotifs.add(output);
 			return;
 		}
