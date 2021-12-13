@@ -19,6 +19,26 @@ public class Comparator {
 
 	public static void main(String[] args) throws Exception {
 		
+		
+//		int l = 3;
+//		int d = 0;
+//		int n = l;
+//		double q = 0.8;
+//		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q);
+//		
+//		p.addString(Sequence.str("ABBBACCCA"));
+//		p.addString(Sequence.str("DBBBDCCCD"));
+//		p.addString(Sequence.str("AAAAA"));
+		
+//		p.generateCandidateMotifs();
+//		System.out.println(p.getCandidateMotifs());
+		
+//		p.generateCandidateMotifs();
+//		System.out.println(p.getCandidateMotifs());
+//		p.verifyMotifs();
+//		System.out.println(p.getMotifs());
+		
+		
 		if (args.length != 2) {
 			System.err.println("Use: java -jar FILE.jar input.xes output.xes");
 			System.exit(1);
@@ -27,21 +47,23 @@ public class Comparator {
 		String inputFile = args[0];
 		String outputfile = args[1];
 		
-		int l = 9;
-		int d = 2;
-		int n = 9;
-		double q = 0.8;
+		int motifsLength = 15;
+		int maxDistance = 5;
+		int ngramSize = 15;
+		double quorum = 1;
+		int threads = 3;
 		
-		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q);
+		qPMSPM<String> p = new qPMSPM<String>(motifsLength, maxDistance, ngramSize, quorum, threads);
 		
 		System.out.println("qPMS-PM");
 		System.out.println("-------");
 		System.out.println("         input file: " + inputFile);
 		System.out.println("        output file: " + outputfile);
-		System.out.println("      motifs length: " + l);
-		System.out.println("motifs max distance: " + d);
-		System.out.println("      ngrams length: " + n);
-		System.out.println("             quorum: " + q);
+		System.out.println("      motifs length: " + motifsLength);
+		System.out.println("motifs max distance: " + maxDistance);
+		System.out.println("      ngrams length: " + ngramSize);
+		System.out.println("             quorum: " + quorum);
+		System.out.println("            threads: " + threads);
 		System.out.println("");
 		
 		long time = System.currentTimeMillis();
@@ -65,7 +87,7 @@ public class Comparator {
 		System.out.println("Done! - " + p.getCandidateMotifs().size() + " motifs identified in " + (System.currentTimeMillis() - time) + "ms");
 		
 		time = System.currentTimeMillis();
-		System.out.print("3. Verifying motifs... ");
+		System.out.println("3. Verifying motifs... ");
 		p.verifyMotifs();
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		
@@ -87,13 +109,5 @@ public class Comparator {
 		
 		System.out.println("");
 		System.out.println(p.getMotifs().size() + " motifs identified. Motifs saved as XES log at " + outputfile + ".");
-		
-//		p.addString(Sequence.str("ABBBACCCA"));
-//		p.addString(Sequence.str("DBBBDCCCD"));
-//		p.addString(Sequence.str("AAAAA"));
-//		p.generateCandidateMotifs();
-//		System.out.println(p.getCandidateMotifs());
-//		p.verifyMotifs();
-//		System.out.println(p.getMotifs());
 	}
 }
