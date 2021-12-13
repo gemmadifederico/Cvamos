@@ -27,9 +27,9 @@ public class Comparator {
 		String inputFile = args[0];
 		String outputfile = args[1];
 		
-		int l = 10;
+		int l = 9;
 		int d = 2;
-		int n = 10;
+		int n = 9;
 		double q = 0.8;
 		
 		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q);

@@ -1,8 +1,12 @@
 package dtu.qpms;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import com.google.common.collect.Iterables;
+
+import dtu.qpms.model.MotifsVerifierExecutor;
 import dtu.qpms.model.Sequence;
 import dtu.qpms.model.SequenceItemPrinter;
 
@@ -70,24 +74,47 @@ public class qPMSPM<T> {
 //	}
 	
 	public void verifyMotifs() {
-		this.verifiedMotifs = new HashSet<Sequence<T>>();
-		for (Sequence<T> m : potentialMotifs) {
-			double stringsWithMotif = 0;
-			for (Sequence<T> s : strings) {
-				if (verifyMotifInString(s, m, motifMaxDistance)) {
-					stringsWithMotif++;
-					
-				} else {
-					if (quorum == 1) {
-						break;
-					}
-				}
-			}
-			if (stringsWithMotif / strings.size() >= quorum) {
-//				System.out.println(m);
-				verifiedMotifs.add(m);
+		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
+		
+		for(List<Sequence<T>> s : Iterables.partition(potentialMotifs, potentialMotifs.size() / 3)) {
+			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(potentialMotifs, s, motifMaxDistance, quorum);
+			threads.add(e);
+			e.start();
+			System.out.println("Starting thread");
+		}
+		
+		for (Thread t : threads) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
+		
+		this.verifiedMotifs = new HashSet<Sequence<T>>();
+		for (MotifsVerifierExecutor<T> t : threads) {
+			verifiedMotifs.addAll(t.getVerifiedMotifs());
+		}
+		
+//		this.verifiedMotifs = new HashSet<Sequence<T>>();
+//		
+//		
+//		
+//		for (Sequence<T> m : potentialMotifs) {
+//			double stringsWithMotif = 0;
+//			for (Sequence<T> s : strings) {
+//				if (verifyMotifInString(s, m, motifMaxDistance)) {
+//					stringsWithMotif++;
+//				} else {
+//					if (quorum == 1) {
+//						break;
+//					}
+//				}
+//			}
+//			if (stringsWithMotif / strings.size() >= quorum) {
+//				verifiedMotifs.add(m);
+//			}
+//		}
 	}
 	
 	/**
@@ -107,13 +134,10 @@ public class qPMSPM<T> {
 		}
 		// generate motifs
 		recursiveGenerateMotif(ngrams, new Sequence<T>(printer), motifLength/ngramLength);
-//		System.out.println(ngrams);
-//		System.out.println(potentialMotifs);
 	}
 	
 	private void recursiveGenerateMotif(Set<Sequence<T>> ngrams, Sequence<T> output, int l) {
 		if (l <= 0) {
-//			System.out.println(output);
 			this.potentialMotifs.add(output);
 			return;
 		}
@@ -166,29 +190,4 @@ public class qPMSPM<T> {
 //		}
 //		return toReturn;
 //	}
-	
-	private static <T> boolean verifyMotifInString(Sequence<T> string, Sequence<T> motif, double maxDistance) {
-		int motifLength = motif.size();
-		int stringLength = string.size();
-		
-		if (stringLength >= motifLength) {
-			for (int i = 0; i <= stringLength - motifLength; i++) {
-				if (hammingDistance(string.substring(i, i + motifLength), motif) <= maxDistance) {
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-	
-	private static <T> int hammingDistance(Sequence<T> str1, Sequence<T>str2) {
-		int i = 0, count = 0;
-		while (i < str1.size()) {
-			if (!str1.get(i).equals(str2.get(i))) {
-				count++;
-			}
-			i++;
-		}
-		return count;
-	}
 }
