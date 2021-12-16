@@ -2,6 +2,7 @@ package dtu.qpms.model;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class MotifsVerifierExecutor<T> extends Thread {
@@ -11,13 +12,23 @@ public class MotifsVerifierExecutor<T> extends Thread {
 	private Collection<String> strings;
 	private double motifMaxDistance;
 	private double quorum;
+	private CostMapping<T> costs;
+	private Map<Character, T> map;
 	
-	public MotifsVerifierExecutor(Collection<String> potentialMotifs, Collection<String> strings, double motifMaxDistance, double quorum) {
+	public MotifsVerifierExecutor(
+			Collection<String> potentialMotifs,
+			Collection<String> strings,
+			double motifMaxDistance,
+			double quorum,
+			CostMapping<T> costs,
+			Map<Character, T> map) {
 		this.potentialMotifs = potentialMotifs;
 		this.verifiedMotifs = new HashSet<String>();
 		this.strings = strings;
 		this.motifMaxDistance = motifMaxDistance;
 		this.quorum = quorum;
+		this.costs = costs;
+		this.map = map;
 	}
 	
 	public Set<String> getVerifiedMotifs() {
@@ -50,7 +61,7 @@ public class MotifsVerifierExecutor<T> extends Thread {
 		}
 	}
 	
-	private static <T> boolean verifyMotifInString(String string, String motif, double maxDistance) {
+	private boolean verifyMotifInString(String string, String motif, double maxDistance) {
 		int motifLength = motif.length();
 		int stringLength = string.length();
 		
@@ -64,11 +75,13 @@ public class MotifsVerifierExecutor<T> extends Thread {
 		return false;
 	}
 	
-	private static <T> int hammingDistance(String str1, String str2) {
+	private int hammingDistance(String str1, String str2) {
 		int count = 0;
 		for (int i = 0; i < str1.length(); i++) {
-			if (str1.charAt(i) != str2.charAt(i)) {
-				count++;
+			char c1 = str1.charAt(i);
+			char c2 = str2.charAt(i);
+			if (c1 != c2) {
+				count += costs.getCost(map.get(c1), map.get(c2));
 			}
 		}
 		return count;

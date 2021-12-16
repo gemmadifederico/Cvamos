@@ -12,53 +12,58 @@ import org.deckfour.xes.model.XTrace;
 import org.deckfour.xes.out.XSerializer;
 import org.deckfour.xes.out.XesXmlSerializer;
 
+import dtu.qpms.model.CostMapping;
 import dtu.qpms.model.Sequence;
+import dtu.qpms.model.qPMSPM;
 import dtu.qpms.utils.XLogHelper;
 
-public class Comparator {
+public class MotifsIdentifier {
 
 	public static void main(String[] args) throws Exception {
 		
 		
-//		int l = 3;
+//		int l = 4;
 //		int d = 0;
 //		int n = l;
 //		double q = 0.8;
-//		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q);
+//		CostMapping<String> c = new CostMapping<String>();
+//		c.read(args[2]);
+//		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q, 1, c);
 //		
 //		p.addString(Sequence.str("ABBBACCCA"));
 //		p.addString(Sequence.str("DBBBDCCCD"));
-//		p.addString(Sequence.str("AAAAA"));
-		
-//		p.generateCandidateMotifs();
-//		System.out.println(p.getCandidateMotifs());
-		
+////		p.addString(Sequence.str("AAAAA"));
+//		
 //		p.generateCandidateMotifs();
 //		System.out.println(p.getCandidateMotifs());
 //		p.verifyMotifs();
 //		System.out.println(p.getMotifs());
 		
 		
-		if (args.length != 2) {
-			System.err.println("Use: java -jar FILE.jar input.xes output.xes");
+		if (args.length != 3) {
+			System.err.println("Use: java -jar FILE.jar input.xes output.xes costs-map.json");
 			System.exit(1);
 		}
 		
 		String inputFile = args[0];
-		String outputfile = args[1];
+		String outputFile = args[1];
+		String mapFile = args[2];
 		
-		int motifsLength = 15;
-		int maxDistance = 5;
-		int ngramSize = 15;
-		double quorum = 1;
-		int threads = 3;
+		int motifsLength = 7;
+		int maxDistance = 3;
+		int ngramSize = 1;
+		double quorum = 0.8;
+		int threads = 1;
 		
-		qPMSPM<String> p = new qPMSPM<String>(motifsLength, maxDistance, ngramSize, quorum, threads);
+		CostMapping<String> c = new CostMapping<String>();
+		c.read(mapFile);
+		qPMSPM<String> p = new qPMSPM<String>(motifsLength, maxDistance, ngramSize, quorum, threads, c);
 		
 		System.out.println("qPMS-PM");
 		System.out.println("-------");
 		System.out.println("         input file: " + inputFile);
-		System.out.println("        output file: " + outputfile);
+		System.out.println("        output file: " + outputFile);
+		System.out.println("     costs map file: " + mapFile);
 		System.out.println("      motifs length: " + motifsLength);
 		System.out.println("motifs max distance: " + maxDistance);
 		System.out.println("      ngrams length: " + ngramSize);
@@ -79,7 +84,6 @@ public class Comparator {
 			p.addString(s);
 		}
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
-		
 		
 		time = System.currentTimeMillis();
 		System.out.print("2. Generating candidate motifs... ");
@@ -104,10 +108,10 @@ public class Comparator {
 			motifCounter++;
 		}
 		XSerializer serializer = new XesXmlSerializer();
-		serializer.serialize(logMotifs, new FileOutputStream(outputfile));
+		serializer.serialize(logMotifs, new FileOutputStream(outputFile));
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		
 		System.out.println("");
-		System.out.println(p.getMotifs().size() + " motifs identified. Motifs saved as XES log at " + outputfile + ".");
+		System.out.println(p.getMotifs().size() + " motifs identified. Motifs saved as XES log at " + outputFile + ".");
 	}
 }

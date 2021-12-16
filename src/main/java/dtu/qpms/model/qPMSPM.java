@@ -1,4 +1,4 @@
-package dtu.qpms;
+package dtu.qpms.model;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,9 +7,6 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Iterables;
-
-import dtu.qpms.model.MotifsVerifierExecutor;
-import dtu.qpms.model.Sequence;
 
 public class qPMSPM<T> {
 	
@@ -21,10 +18,11 @@ public class qPMSPM<T> {
 	private Set<String> potentialMotifs;
 	private Set<String> verifiedMotifs;
 	private Set<String> strings;
+	private CostMapping<T> costs;
 	private Map<Character, T> charsToValues;
 	private Map<T, Character> valuesToChars;
 
-	public qPMSPM(int l, double d, int n, double q, int threads) {
+	public qPMSPM(int l, double d, int n, double q, int threads, CostMapping<T> costs) {
 		this.motifLength = l;
 		this.motifMaxDistance = d;
 		this.ngramLength = n;
@@ -33,6 +31,7 @@ public class qPMSPM<T> {
 		this.potentialMotifs = new HashSet<String>();
 		this.verifiedMotifs = new HashSet<String>();
 		this.strings = new HashSet<String>();
+		this.costs = costs;
 		charsToValues = new HashMap<Character, T>();
 		valuesToChars = new HashMap<T, Character>();
 	}
@@ -102,7 +101,7 @@ public class qPMSPM<T> {
 		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
 		
 		for(List<String> s : Iterables.partition(potentialMotifs, potentialMotifs.size() / this.threads)) {
-			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(s, strings, motifMaxDistance, quorum);
+			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(s, strings, motifMaxDistance, quorum, costs, charsToValues);
 			threads.add(e);
 			e.start();
 			System.out.println("Starting thread");
@@ -168,7 +167,7 @@ public class qPMSPM<T> {
 		}
 	}
 	
-//	public static Set<String> filterOutMotifs(Set<Sequence<T>> motifs, Set<Sequence<T>> strings, double maxDistance, Sequence<T> replace) {
+//	public static <T> Set<Sequence<T>> filterOutMotifs(Set<Sequence<T>> motifs, Set<Sequence<T>> strings, double maxDistance, Sequence<T> replace) {
 //		if (motifs.isEmpty()) {
 //			return strings;
 //		}

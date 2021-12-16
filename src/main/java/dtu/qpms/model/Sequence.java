@@ -7,7 +7,7 @@ public class Sequence<T> extends ArrayList<T> {
 	private static final long serialVersionUID = -2649942823028260419L;
 	private SequenceItemPrinter<T> printer = null;
 
-	public Sequence() {	}
+	public Sequence() { }
 	
 	public Sequence(Sequence<T> copy) {
 		for(T i : copy) {
@@ -28,12 +28,12 @@ public class Sequence<T> extends ArrayList<T> {
 	
 	public Sequence<T> substring(int beginIndex, int endIndex) {
 		if (beginIndex < 0) {
-            throw new StringIndexOutOfBoundsException(beginIndex);
-        }
-        int subLen = size() - beginIndex;
-        if (subLen < 0) {
-            throw new StringIndexOutOfBoundsException(subLen);
-        }
+			throw new StringIndexOutOfBoundsException(beginIndex);
+		}
+		int subLen = size() - beginIndex;
+		if (subLen < 0) {
+			throw new StringIndexOutOfBoundsException(subLen);
+		}
 		Sequence<T> toRet = new Sequence<T>(printer);
 		for (int i = beginIndex; i < endIndex; i++) {
 			toRet.add(get(i));
