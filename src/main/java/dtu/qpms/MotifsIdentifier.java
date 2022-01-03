@@ -49,10 +49,10 @@ public class MotifsIdentifier {
 		String outputFile = args[1];
 		String mapFile = args[2];
 		
-		int motifsLength = 7;
-		int maxDistance = 3;
+		int motifsLength = 3;
+		int maxDistance = 0;
 		int ngramSize = 1;
-		double quorum = 0.8;
+		double quorum = 1;
 		int threads = 1;
 		
 		CostMapping<String> c = new CostMapping<String>();

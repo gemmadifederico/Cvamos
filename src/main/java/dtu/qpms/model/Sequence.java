@@ -5,7 +5,6 @@ import java.util.ArrayList;
 public class Sequence<T> extends ArrayList<T> {
 
 	private static final long serialVersionUID = -2649942823028260419L;
-	private SequenceItemPrinter<T> printer = null;
 
 	public Sequence() { }
 	
@@ -15,11 +14,7 @@ public class Sequence<T> extends ArrayList<T> {
 		}
 	}
 	
-	public Sequence(SequenceItemPrinter<T> printer) {
-		this.printer = printer;
-	}
-	
-	@SuppressWarnings("unchecked")
+	@SafeVarargs
 	public Sequence(T ...items) {
 		for (T i : items) {
 			add(i);
@@ -34,15 +29,11 @@ public class Sequence<T> extends ArrayList<T> {
 		if (subLen < 0) {
 			throw new StringIndexOutOfBoundsException(subLen);
 		}
-		Sequence<T> toRet = new Sequence<T>(printer);
+		Sequence<T> toRet = new Sequence<T>();
 		for (int i = beginIndex; i < endIndex; i++) {
 			toRet.add(get(i));
 		}
 		return toRet;
-	}
-	
-	public SequenceItemPrinter<T> getPrinter() {
-		return printer;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -54,23 +45,11 @@ public class Sequence<T> extends ArrayList<T> {
 		return new Sequence<String>(s.split("(?!^)"));
 	}
 	
-	public static <T> Sequence<T> concat(Sequence<T> s1, Sequence<T> s2) {
-		Sequence<T> s = new Sequence<T>(s1.getPrinter());
-		s.addAll(s1);
-		s.addAll(s2);
-		return s;
-	}
-	
 	@Override
 	public String toString() {
 		String s = "[";
 		for (T i : this) {
-			if (printer == null) {
-				s += i + ",";
-			} else {
-				s += printer.getStringRepresentation(i) + ",";
-			}
-			
+			s += i.toString() + ",";
 		}
 		s = s.substring(0, s.length() - 1) + "]";
 		return s;
