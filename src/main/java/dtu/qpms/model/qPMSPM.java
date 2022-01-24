@@ -10,25 +10,27 @@ import com.google.common.collect.Iterables;
 
 public class qPMSPM<T> {
 	
-	private int motifLength;
+	private int motifLengthMin;
+	private int motifLengthMax;
 	private double motifMaxDistance;
 	private int ngramLength;
 	private double quorum;
 	private int threads;
-	private Set<String> potentialMotifs;
+	private Map<Integer, HashSet<String>> potentialMotifs;
 	private Set<String> verifiedMotifs;
 	private Set<String> strings;
 	private CostMapping<T> costs;
 	private Map<Character, T> charsToValues;
 	private Map<T, Character> valuesToChars;
 
-	public qPMSPM(int l, double d, int n, double q, int threads, CostMapping<T> costs) {
-		this.motifLength = l;
+	public qPMSPM(int lMin, int lMax, double d, int n, double q, int threads, CostMapping<T> costs) {
+		this.motifLengthMin = lMin;
+		this.motifLengthMax = lMax;
 		this.motifMaxDistance = d;
 		this.ngramLength = n;
 		this.quorum = q;
 		this.threads = threads;
-		this.potentialMotifs = new HashSet<String>();
+		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
 		this.verifiedMotifs = new HashSet<String>();
 		this.strings = new HashSet<String>();
 		this.costs = costs;
@@ -37,7 +39,11 @@ public class qPMSPM<T> {
 	}
 	
 	public Set<String> getCandidateMotifs() {
-		return potentialMotifs;
+		Set<String> pm = new HashSet<String>();
+		for (HashSet<String> m : potentialMotifs.values()) {
+			pm.addAll(m);
+		}
+		return pm;
 	}
 	
 	public Set<String> getStringMotifs() {
@@ -70,8 +76,12 @@ public class qPMSPM<T> {
 		return strings.add(s);
 	}
 	
-	public int getMotifLength() {
-		return motifLength;
+	public int getMinMotifLength() {
+		return motifLengthMin;
+	}
+	
+	public int getMaxMotifLength() {
+		return motifLengthMax;
 	}
 	
 	public double getMaxDistance() {
@@ -99,9 +109,24 @@ public class qPMSPM<T> {
 	
 	public void verifyMotifs() {
 		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
+		@SuppressWarnings("unchecked")
+		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads];
+		for (Integer motifsSize : potentialMotifs.keySet()) {
+			int i = 0;
+			System.out.println("Size: " + motifsSize + " - tot candidate " + potentialMotifs.get(motifsSize).size() + ", partition size: " + (potentialMotifs.get(motifsSize).size() / this.threads));
+			for (List<String> strs : Iterables.partition(potentialMotifs.get(motifsSize), potentialMotifs.get(motifsSize).size() / this.threads)) {
+				if (partitionedSets[i] == null) {
+					partitionedSets[i] = new HashMap<Integer, List<String>>();
+				}
+				System.out.println("Adding " + strs.size() + " candidates with length " + motifsSize + " to element " + i);
+				partitionedSets[i].put(motifsSize, strs);
+				i++;
+			}
+		}
 		
-		for(List<String> s : Iterables.partition(potentialMotifs, potentialMotifs.size() / this.threads)) {
-			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(s, strings, motifMaxDistance, quorum, costs, charsToValues);
+		for (int i = 0; i < partitionedSets.length; i++) {
+			System.out.println("Creating thread for " + partitionedSets[i].keySet().size() + " points");
+			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(partitionedSets[i], strings, motifMaxDistance, quorum, costs, charsToValues);
 			threads.add(e);
 			e.start();
 			System.out.println("Starting thread");
@@ -142,8 +167,8 @@ public class qPMSPM<T> {
 	 * Generate only motifs from the given string
 	 */
 	public void generateCandidateMotifs() {
-		this.potentialMotifs = new HashSet<String>();
-		// generate all n-grams
+		// generate all possible n-grams
+		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
 		Set<String> ngrams = new HashSet<String>();
 		for (String s : strings) {
 			int stringLength = s.length();
@@ -153,13 +178,22 @@ public class qPMSPM<T> {
 				}
 			}
 		}
-		// generate motifs
-		recursiveGenerateMotif(ngrams, "", motifLength/ngramLength);
+
+		// generate all motifs
+		int motifLength = getMinMotifLength();
+		while(motifLength <= getMaxMotifLength()) {
+			// generate motifs
+			recursiveGenerateMotif(ngrams, "", motifLength/ngramLength);
+			motifLength += ngramLength;
+		}
 	}
 	
 	private void recursiveGenerateMotif(Set<String> ngrams, String output, int l) {
 		if (l <= 0) {
-			this.potentialMotifs.add(output);
+			if (!potentialMotifs.containsKey(output.length())) {
+				potentialMotifs.put(output.length(), new HashSet<String>());
+			}
+			potentialMotifs.get(output.length()).add(output);
 			return;
 		}
 		for (String ngram : ngrams) {

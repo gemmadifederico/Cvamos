@@ -1,13 +1,16 @@
 package dtu.qpms.model;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class MotifsVerifierExecutor<T> extends Thread {
 
-	private Collection<String> potentialMotifs;
+	private Map<Integer, List<String>> potentialMotifs;
 	private Set<String> verifiedMotifs;
 	private Collection<String> strings;
 	private double motifMaxDistance;
@@ -15,7 +18,7 @@ public class MotifsVerifierExecutor<T> extends Thread {
 	private HammingDistance<T> hamming;
 	
 	public MotifsVerifierExecutor(
-			Collection<String> potentialMotifs,
+			Map<Integer, List<String>> potentialMotifs,
 			Collection<String> strings,
 			double motifMaxDistance,
 			double quorum,
@@ -41,22 +44,33 @@ public class MotifsVerifierExecutor<T> extends Thread {
 	
 	public void verifyMotifs() {
 		this.verifiedMotifs = new HashSet<String>();
-		
-		for (String m : potentialMotifs) {
-			double stringsWithMotif = 0;
-			for (String s : strings) {
-				if (verifyMotifInString(s, m, motifMaxDistance)) {
-					stringsWithMotif++;
-				} else {
-					if (quorum == 1d) {
-						break;
+		int i = 0;
+		List<Integer> lengths = new ArrayList<Integer>(potentialMotifs.keySet());
+		Collections.sort(lengths);
+		for (Integer len : lengths) {
+			int motifsFound = 0;
+			for (String m : potentialMotifs.get(len)) {
+				double stringsWithMotif = 0;
+				for (String s : strings) {
+					i++;
+					if (verifyMotifInString(s, m, motifMaxDistance)) {
+						stringsWithMotif++;
+					} else {
+						if (quorum == 1d) {
+							break;
+						}
 					}
 				}
+				if (stringsWithMotif / strings.size() >= quorum) {
+					verifiedMotifs.add(m);
+					motifsFound++;
+				}
 			}
-			if (stringsWithMotif / strings.size() >= quorum) {
-				verifiedMotifs.add(m);
+			if (motifsFound == 0) {
+				break;
 			}
 		}
+		System.out.println(i + " motifs verified");
 	}
 	
 	private boolean verifyMotifInString(String string, String motif, double maxDistance) {

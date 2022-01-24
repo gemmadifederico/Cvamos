@@ -21,23 +21,27 @@ public class MotifsIdentifier {
 
 	public static void main(String[] args) throws Exception {
 		
-		
-//		int l = 4;
-//		int d = 0;
-//		int n = l;
-//		double q = 0.8;
-//		CostMapping<String> c = new CostMapping<String>();
-//		c.read(args[2]);
-//		qPMSPM<String> p = new qPMSPM<String>(l, d, n, q, 1, c);
+//		CostMapping<String> c1 = new CostMapping<String>();
+////		c1.read(args[2]);
+//		qPMSPM<String> p1 = new qPMSPM<String>(
+//				4, // min length
+//				6, // max length
+//				0, // distance
+//				2, // ngram size
+//				1, // quorum
+//				1, // threads
+//				c1);
 //		
-//		p.addString(Sequence.str("ABBBACCCA"));
-//		p.addString(Sequence.str("DBBBDCCCD"));
+//		p1.addString(Sequence.str("ABBBACCCA"));
+//		p1.addString(Sequence.str("ABBBDCCCD"));
 ////		p.addString(Sequence.str("AAAAA"));
 //		
-//		p.generateCandidateMotifs();
-//		System.out.println(p.getCandidateMotifs());
-//		p.verifyMotifs();
-//		System.out.println(p.getMotifs());
+//		p1.generateCandidateMotifs();
+//		System.out.println(p1.getCandidateMotifs().size() + " candidate motifs");
+//		System.out.println(p1.getCandidateMotifs());
+//		p1.verifyMotifs();
+//		System.out.println(p1.getMotifs());
+//		System.exit(0);
 		
 		
 		if (args.length != 3) {
@@ -49,7 +53,8 @@ public class MotifsIdentifier {
 		String outputFile = args[1];
 		String mapFile = args[2];
 		
-		int motifsLength = 3;
+		int motifsMinLength = 3;
+		int motifsMaxLength = 6;
 		int maxDistance = 0;
 		int ngramSize = 1;
 		double quorum = 1;
@@ -57,14 +62,15 @@ public class MotifsIdentifier {
 		
 		CostMapping<String> c = new CostMapping<String>();
 		c.read(mapFile);
-		qPMSPM<String> p = new qPMSPM<String>(motifsLength, maxDistance, ngramSize, quorum, threads, c);
+		qPMSPM<String> p = new qPMSPM<String>(motifsMinLength, motifsMaxLength, maxDistance, ngramSize, quorum, threads, c);
 		
 		System.out.println("qPMS-PM");
 		System.out.println("-------");
 		System.out.println("         input file: " + inputFile);
 		System.out.println("        output file: " + outputFile);
 		System.out.println("     costs map file: " + mapFile);
-		System.out.println("      motifs length: " + motifsLength);
+		System.out.println("  motifs min length: " + motifsMinLength);
+		System.out.println("  motifs max length: " + motifsMaxLength);
 		System.out.println("motifs max distance: " + maxDistance);
 		System.out.println("      ngrams length: " + ngramSize);
 		System.out.println("             quorum: " + quorum);
