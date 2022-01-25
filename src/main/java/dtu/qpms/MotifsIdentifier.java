@@ -22,14 +22,14 @@ public class MotifsIdentifier {
 	public static void main(String[] args) throws Exception {
 		
 //		CostMapping<String> c1 = new CostMapping<String>();
-////		c1.read(args[2]);
+////		c1.read(args[2]);s
 //		qPMSPM<String> p1 = new qPMSPM<String>(
 //				4, // min length
-//				6, // max length
+//				4, // max length
 //				0, // distance
-//				2, // ngram size
+//				1, // ngram size
 //				1, // quorum
-//				1, // threads
+//				9, // threads
 //				c1);
 //		
 //		p1.addString(Sequence.str("ABBBACCCA"));
@@ -37,12 +37,11 @@ public class MotifsIdentifier {
 ////		p.addString(Sequence.str("AAAAA"));
 //		
 //		p1.generateCandidateMotifs();
-//		System.out.println(p1.getCandidateMotifs().size() + " candidate motifs");
 //		System.out.println(p1.getCandidateMotifs());
+//		System.out.println(p1.getCandidateMotifs().size() + " candidate motifs");
 //		p1.verifyMotifs();
 //		System.out.println(p1.getMotifs());
 //		System.exit(0);
-		
 		
 		if (args.length != 3) {
 			System.err.println("Use: java -jar FILE.jar input.xes output.xes costs-map.json");
@@ -53,12 +52,12 @@ public class MotifsIdentifier {
 		String outputFile = args[1];
 		String mapFile = args[2];
 		
-		int motifsMinLength = 3;
+		int motifsMinLength = 2;
 		int motifsMaxLength = 6;
 		int maxDistance = 0;
-		int ngramSize = 1;
+		int ngramSize = 2;
 		double quorum = 1;
-		int threads = 1;
+		int threads = 5;
 		
 		CostMapping<String> c = new CostMapping<String>();
 		c.read(mapFile);
@@ -96,8 +95,10 @@ public class MotifsIdentifier {
 		p.generateCandidateMotifs();
 		System.out.println("Done! - " + p.getCandidateMotifs().size() + " motifs identified in " + (System.currentTimeMillis() - time) + "ms");
 		
+		System.out.println(p.getCandidateMotifs());
+		
 		time = System.currentTimeMillis();
-		System.out.println("3. Verifying motifs... ");
+		System.out.print("3. Verifying motifs... ");
 		p.verifyMotifs();
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		

@@ -48,11 +48,11 @@ public class MotifsVerifierExecutor<T> extends Thread {
 		List<Integer> lengths = new ArrayList<Integer>(potentialMotifs.keySet());
 		Collections.sort(lengths);
 		for (Integer len : lengths) {
-			int motifsFound = 0;
+//			int motifsFound = 0;
 			for (String m : potentialMotifs.get(len)) {
 				double stringsWithMotif = 0;
+				i++;
 				for (String s : strings) {
-					i++;
 					if (verifyMotifInString(s, m, motifMaxDistance)) {
 						stringsWithMotif++;
 					} else {
@@ -63,12 +63,12 @@ public class MotifsVerifierExecutor<T> extends Thread {
 				}
 				if (stringsWithMotif / strings.size() >= quorum) {
 					verifiedMotifs.add(m);
-					motifsFound++;
+//					motifsFound++;
 				}
 			}
-			if (motifsFound == 0) {
-				break;
-			}
+//			if (motifsFound == 0) {
+//				break;
+//			}
 		}
 		System.out.println(i + " motifs verified");
 	}

@@ -110,7 +110,7 @@ public class qPMSPM<T> {
 	public void verifyMotifs() {
 		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
 		@SuppressWarnings("unchecked")
-		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads];
+		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads+1];
 		for (Integer motifsSize : potentialMotifs.keySet()) {
 			int i = 0;
 			System.out.println("Size: " + motifsSize + " - tot candidate " + potentialMotifs.get(motifsSize).size() + ", partition size: " + (potentialMotifs.get(motifsSize).size() / this.threads));
@@ -125,11 +125,13 @@ public class qPMSPM<T> {
 		}
 		
 		for (int i = 0; i < partitionedSets.length; i++) {
-			System.out.println("Creating thread for " + partitionedSets[i].keySet().size() + " points");
-			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(partitionedSets[i], strings, motifMaxDistance, quorum, costs, charsToValues);
-			threads.add(e);
-			e.start();
-			System.out.println("Starting thread");
+			if (partitionedSets[i] != null) {
+				System.out.println("Creating thread for " + partitionedSets[i].keySet().size() + " points");
+				MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(partitionedSets[i], strings, motifMaxDistance, quorum, costs, charsToValues);
+				threads.add(e);
+				e.start();
+				System.out.println("Starting thread");
+			}
 		}
 		
 		for (Thread t : threads) {
