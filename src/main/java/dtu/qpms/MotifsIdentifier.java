@@ -2,6 +2,9 @@ package dtu.qpms;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.deckfour.xes.extension.std.XConceptExtension;
 import org.deckfour.xes.in.XParser;
@@ -55,13 +58,13 @@ public class MotifsIdentifier {
 		int motifsMinLength = 2;
 		int motifsMaxLength = 6;
 		int maxDistance = 0;
-		int ngramSize = 2;
+		Set<Integer> ngramSizes = new HashSet<Integer>(Arrays.asList(3,4));
 		double quorum = 1;
 		int threads = 5;
 		
 		CostMapping<String> c = new CostMapping<String>();
 		c.read(mapFile);
-		qPMSPM<String> p = new qPMSPM<String>(motifsMinLength, motifsMaxLength, maxDistance, ngramSize, quorum, threads, c);
+		qPMSPM<String> p = new qPMSPM<String>(motifsMinLength, motifsMaxLength, maxDistance, ngramSizes, quorum, threads, c);
 		
 		System.out.println("qPMS-PM");
 		System.out.println("-------");
@@ -71,7 +74,7 @@ public class MotifsIdentifier {
 		System.out.println("  motifs min length: " + motifsMinLength);
 		System.out.println("  motifs max length: " + motifsMaxLength);
 		System.out.println("motifs max distance: " + maxDistance);
-		System.out.println("      ngrams length: " + ngramSize);
+		System.out.println("     ngrams lengths: " + ngramSizes);
 		System.out.println("             quorum: " + quorum);
 		System.out.println("            threads: " + threads);
 		System.out.println("");
@@ -94,8 +97,6 @@ public class MotifsIdentifier {
 		System.out.print("2. Generating candidate motifs... ");
 		p.generateCandidateMotifs();
 		System.out.println("Done! - " + p.getCandidateMotifs().size() + " motifs identified in " + (System.currentTimeMillis() - time) + "ms");
-		
-		System.out.println(p.getCandidateMotifs());
 		
 		time = System.currentTimeMillis();
 		System.out.print("3. Verifying motifs... ");

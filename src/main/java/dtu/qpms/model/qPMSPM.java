@@ -13,7 +13,7 @@ public class qPMSPM<T> {
 	private int motifLengthMin;
 	private int motifLengthMax;
 	private double motifMaxDistance;
-	private int ngramLength;
+	private Set<Integer> ngramLengths;
 	private double quorum;
 	private int threads;
 	private Map<Integer, HashSet<String>> potentialMotifs;
@@ -23,11 +23,11 @@ public class qPMSPM<T> {
 	private Map<Character, T> charsToValues;
 	private Map<T, Character> valuesToChars;
 
-	public qPMSPM(int lMin, int lMax, double d, int n, double q, int threads, CostMapping<T> costs) {
+	public qPMSPM(int lMin, int lMax, double d, Set<Integer> n, double q, int threads, CostMapping<T> costs) {
 		this.motifLengthMin = lMin;
 		this.motifLengthMax = lMax;
 		this.motifMaxDistance = d;
-		this.ngramLength = n;
+		this.ngramLengths = n;
 		this.quorum = q;
 		this.threads = threads;
 		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
@@ -88,8 +88,8 @@ public class qPMSPM<T> {
 		return motifMaxDistance;
 	}
 	
-	public int getNgramLength() {
-		return ngramLength;
+	public Set<Integer> getNgramLengths() {
+		return ngramLengths;
 	}
 	
 	public double getQuorum() {
@@ -169,29 +169,32 @@ public class qPMSPM<T> {
 	 * Generate only motifs from the given string
 	 */
 	public void generateCandidateMotifs() {
-		// generate all possible n-grams
 		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
-		Set<String> ngrams = new HashSet<String>();
-		for (String s : strings) {
-			int stringLength = s.length();
-			if (stringLength >= ngramLength) {
-				for (int i = 0; i <= stringLength - ngramLength; i++) {
-					ngrams.add(s.substring(i, i + ngramLength));
+		
+		for (int ngramLength : ngramLengths) {
+			// generate all possible n-grams
+			Set<String> ngrams = new HashSet<String>();
+			for (String s : strings) {
+				int stringLength = s.length();
+				if (stringLength >= ngramLength) {
+					for (int i = 0; i <= stringLength - ngramLength; i++) {
+						ngrams.add(s.substring(i, i + ngramLength));
+					}
 				}
 			}
-		}
-
-		// generate all motifs
-		int motifLength = getMinMotifLength();
-		while(motifLength <= getMaxMotifLength()) {
-			// generate motifs
-			recursiveGenerateMotif(ngrams, "", motifLength/ngramLength);
-			motifLength += ngramLength;
+			
+			// generate all motifs
+			int motifLength = getMinMotifLength();
+			while(motifLength <= getMaxMotifLength()) {
+				// generate motifs
+				recursiveGenerateMotif(ngrams, "", motifLength/ngramLength);
+				motifLength += ngramLength;
+			}
 		}
 	}
 	
 	private void recursiveGenerateMotif(Set<String> ngrams, String output, int l) {
-		if (l <= 0) {
+		if (l < 0) {
 			if (!potentialMotifs.containsKey(output.length())) {
 				potentialMotifs.put(output.length(), new HashSet<String>());
 			}
