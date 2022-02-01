@@ -183,8 +183,6 @@ public class qPMSPM<T> {
 				}
 			}
 			
-			System.out.println(ngrams.size());
-			
 			// generate all motifs
 			int motifLength = getMinMotifLength();
 			while(motifLength <= getMaxMotifLength()) {
