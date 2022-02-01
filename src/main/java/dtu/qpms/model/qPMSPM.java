@@ -195,10 +195,12 @@ public class qPMSPM<T> {
 	
 	private void recursiveGenerateMotif(Set<String> ngrams, String output, int l) {
 		if (l <= 0) {
-			if (!potentialMotifs.containsKey(output.length())) {
-				potentialMotifs.put(output.length(), new HashSet<String>());
+			if (output.length() >= motifLengthMin) {
+				if (!potentialMotifs.containsKey(output.length())) {
+					potentialMotifs.put(output.length(), new HashSet<String>());
+				}
+				potentialMotifs.get(output.length()).add(output);
 			}
-			potentialMotifs.get(output.length()).add(output);
 			return;
 		}
 		for (String ngram : ngrams) {
