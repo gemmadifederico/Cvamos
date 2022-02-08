@@ -68,7 +68,7 @@ import org.deckfour.xes.model.impl.XAttributeMapLazyImpl;
  */
 public class XLogHelper {
 
-	private static XFactory xesFactory = new XFactoryNaiveImpl();
+	public static XFactory xesFactory = new XFactoryNaiveImpl();
 	private static XExtensionManager xesExtensionManager = XExtensionManager.instance();
 
 	/**

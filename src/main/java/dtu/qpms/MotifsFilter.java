@@ -5,9 +5,11 @@ import java.io.FileOutputStream;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.deckfour.xes.extension.std.XConceptExtension;
 import org.deckfour.xes.in.XParser;
 import org.deckfour.xes.in.XesXmlParser;
+import org.deckfour.xes.model.XAttributeMap;
 import org.deckfour.xes.model.XEvent;
 import org.deckfour.xes.model.XLog;
 import org.deckfour.xes.model.XTrace;
@@ -47,9 +49,8 @@ public class MotifsFilter {
 		System.out.println("motifs max distance: " + maxDistance);
 		System.out.println("");
 		
-		Set<Sequence<String>> strings = new HashSet<Sequence<String>>();
 		Set<Sequence<String>> motifs = new HashSet<Sequence<String>>();
-		MotifsFilterExecutor<String> mf = new MotifsFilterExecutor<String>(c);
+		MotifsFilterExecutor<String, XAttributeMap> mf = new MotifsFilterExecutor<String, XAttributeMap>(c);
 		
 		XParser parser = new XesXmlParser();
 		
@@ -59,11 +60,12 @@ public class MotifsFilter {
 		
 		for (XTrace t : logStrings) {
 			Sequence<String> s = new Sequence<String>();
+			Sequence<XAttributeMap> attributes = new Sequence<XAttributeMap>();
 			for (XEvent e : t) {
 				s.add(XConceptExtension.instance().extractName(e));
+				attributes.add(e.getAttributes());
 			}
-			strings.add(s);
-			mf.addString(s);
+			mf.addString(s, attributes);
 		}
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		
@@ -84,17 +86,20 @@ public class MotifsFilter {
 		
 		time = System.currentTimeMillis();
 		System.out.print("3. Filtering motifs... ");
-		Set<Sequence<String>> replaced = mf.filter(maxDistance, ACTIVITY_NAME_ABSTRACTED_ACTIVITY);
+		Set<Pair<Sequence<String>, Sequence<XAttributeMap>>> replaced = mf.filter(maxDistance, ACTIVITY_NAME_ABSTRACTED_ACTIVITY);
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		
 		time = System.currentTimeMillis();
 		System.out.print("4. Saving motifs... ");
 		int motifCounter = 1;
 		XLog logFiltered = XLogHelper.generateNewXLog("filtered");
-		for(Sequence<String> seq : replaced) {
+		for(Pair<Sequence<String>, Sequence<XAttributeMap>> seq : replaced) {
 			XTrace t = XLogHelper.createTrace("case_" + motifCounter);
-			for (String s : seq) {
-				XLogHelper.insertEvent(t, s);
+			for (int i = 0; i < seq.getLeft().size(); i++) {
+				XEvent e = XLogHelper.xesFactory.createEvent();
+				e.setAttributes(seq.getRight().get(i));
+				XConceptExtension.instance().assignName(e, seq.getLeft().get(i));
+				t.add(e);
 			}
 			logFiltered.add(t);
 			motifCounter++;
