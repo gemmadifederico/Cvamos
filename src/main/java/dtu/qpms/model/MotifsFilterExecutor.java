@@ -84,28 +84,32 @@ public class MotifsFilterExecutor <T> {
 					}
 				}
 			}
-			Collections.sort(indexesWithMotifs);
-			
-			List<Integer> indexesWithMotifsToReplace = new ArrayList<Integer>();
-			for (int i = 0; i < indexesWithMotifs.size(); i++) {
-				if (!(i > 0 && indexesWithMotifs.get(i) < indexesWithMotifs.get(i - 1) + motifLength)) {
-					indexesWithMotifsToReplace.add(indexesWithMotifs.get(i));
+			if (indexesWithMotifs.size() == 0) {
+				toReturn.add(s);
+			} else {
+				Collections.sort(indexesWithMotifs);
+				
+				List<Integer> indexesWithMotifsToReplace = new ArrayList<Integer>();
+				for (int i = 0; i < indexesWithMotifs.size(); i++) {
+					if (!(i > 0 && indexesWithMotifs.get(i) < indexesWithMotifs.get(i - 1) + motifLength)) {
+						indexesWithMotifsToReplace.add(indexesWithMotifs.get(i));
+					}
 				}
+				
+				String replacement = "";
+				for (int i = 0; i < indexesWithMotifsToReplace.size(); i++) {
+					if (i==0) {
+						replacement += s.substring(0, indexesWithMotifsToReplace.get(i));
+					} else {
+						replacement += s.substring(indexesWithMotifsToReplace.get(i - 1) + motifLength, indexesWithMotifsToReplace.get(i));
+					}
+					replacement += TO_REPLACE;
+					if (i + 1 == indexesWithMotifsToReplace.size()) {
+						replacement += s.substring(indexesWithMotifsToReplace.get(i) + motifLength);
+					}
+				}
+				toReturn.add(replacement);
 			}
-			
-			String replacement = "";
-			for (int i = 0; i < indexesWithMotifsToReplace.size(); i++) {
-				if (i==0) {
-					replacement += s.substring(0, indexesWithMotifsToReplace.get(i));
-				} else {
-					replacement += s.substring(indexesWithMotifsToReplace.get(i - 1) + motifLength, indexesWithMotifsToReplace.get(i));
-				}
-				replacement += TO_REPLACE;
-				if (i + 1 == indexesWithMotifsToReplace.size()) {
-					replacement += s.substring(indexesWithMotifsToReplace.get(i) + motifLength);
-				}
-			}
-			toReturn.add(replacement);
 		}
 		return toReturn;
 	}
