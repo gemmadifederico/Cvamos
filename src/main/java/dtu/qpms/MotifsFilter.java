@@ -24,8 +24,8 @@ import dtu.qpms.utils.XLogHelper;
 public class MotifsFilter {
 
 	public static void main(String[] args) throws Exception {
-		if (args.length != 4) {
-			System.err.println("Use: java -jar FILE.jar input.xes motifs.xes output.xes costs-map.json");
+		if (args.length != 6) {
+			System.err.println("Use: java -jar FILE.jar input.xes motifs.xes output.xes costs-map.json distance label");
 			System.exit(1);
 		}
 		
@@ -33,9 +33,9 @@ public class MotifsFilter {
 		String motifsFile = args[1];
 		String outputFile = args[2];
 		String mapFile = args[3];
-		int maxDistance = 0;
+		int maxDistance = Integer.parseInt(args[4]);
 		
-		String ACTIVITY_NAME_ABSTRACTED_ACTIVITY = "ABSTRACTED";
+		String ACTIVITY_NAME_ABSTRACTED_ACTIVITY = args[5];
 		
 		CostMapping<String> c = new CostMapping<String>();
 		c.read(mapFile);

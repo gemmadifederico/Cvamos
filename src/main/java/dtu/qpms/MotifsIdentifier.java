@@ -2,6 +2,7 @@ package dtu.qpms;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -14,6 +15,8 @@ import org.deckfour.xes.model.XLog;
 import org.deckfour.xes.model.XTrace;
 import org.deckfour.xes.out.XSerializer;
 import org.deckfour.xes.out.XesXmlSerializer;
+
+import com.opencsv.CSVWriter;
 
 import dtu.qpms.model.CostMapping;
 import dtu.qpms.model.Sequence;
@@ -46,8 +49,8 @@ public class MotifsIdentifier {
 //		System.out.println(p1.getMotifs());
 //		System.exit(0);
 		
-		if (args.length != 3) {
-			System.err.println("Use: java -jar FILE.jar input.xes output.xes costs-map.json");
+		if (args.length != 8) {
+			System.err.println("Use: java -jar FILE.jar input.xes output.xes costs-map.json minLength maxLength distance ngram quorum");
 			System.exit(1);
 		}
 		
@@ -55,11 +58,11 @@ public class MotifsIdentifier {
 		String outputFile = args[1];
 		String mapFile = args[2];
 		
-		int motifsMinLength = 2;
-		int motifsMaxLength = 6;
-		int maxDistance = 0;
-		Set<Integer> ngramSizes = new HashSet<Integer>(Arrays.asList(3,4));
-		double quorum = 1;
+		int motifsMinLength = Integer.parseInt(args[3]);
+		int motifsMaxLength = Integer.parseInt(args[4]);
+		int maxDistance = Integer.parseInt(args[5]);
+		Set<Integer> ngramSizes = new HashSet<Integer>(Arrays.asList(Integer.parseInt(args[6])));
+		double quorum = Double.parseDouble(args[7]);
 		int threads = 5;
 		
 		CostMapping<String> c = new CostMapping<String>();
@@ -120,6 +123,11 @@ public class MotifsIdentifier {
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");
 		
 		System.out.println("");
-		System.out.println(p.getMotifs().size() + " motifs identified. Motifs saved as XES log at " + outputFile + ".");
+		System.out.println(p.getMotifs().size() + " motifs identified.");
+		System.out.println("Total time: " + (System.currentTimeMillis() - initialTime));
+		
+		try (CSVWriter writer = new CSVWriter(new FileWriter("output.csv", true))) {
+            writer.writeNext(new String[]{inputFile, ""+ngramSizes.toString(), ""+motifsMinLength, ""+motifsMaxLength, ""+maxDistance, ""+quorum, ""+p.getMotifs().size(), ""+(System.currentTimeMillis() - initialTime)});
+        }
 	}
 }
