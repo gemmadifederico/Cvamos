@@ -1,12 +1,35 @@
 package dtu.qpms.model;
 
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IntSummaryStatistics;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.deckfour.xes.extension.std.XConceptExtension;
+import org.deckfour.xes.model.XAttribute;
+import org.deckfour.xes.model.XEvent;
+import org.deckfour.xes.model.XTrace;
 
 import com.google.common.collect.Iterables;
+
+import dtu.qpms.model.AttributeMapping.AttribOperation;
 
 public class qPMSPM<T> {
 	
@@ -16,66 +39,246 @@ public class qPMSPM<T> {
 	private Set<Integer> ngramLengths;
 	private double quorum;
 	private int threads;
-	private Map<Integer, HashSet<String>> potentialMotifs;
-	private Set<String> verifiedMotifs;
+	private Map<String, List<HashMap<Character, Object>>> potentialMotifs;
+	private Map<String, HashMap<Character, List<String>>> newPotentialMotifs;
+	private Map<String, HashMap<Character, List<String>>> verifiedMotifs;
+	private List<Map.Entry<XAttribute, XAttribute>> newstrings;
 	private Set<String> strings;
 	private CostMapping<T> costs;
 	private Map<Character, T> charsToValues;
 	private Map<T, Character> valuesToChars;
+	private AttributeMapping<T> cvalues;
+	private Set<Character> cvaluesasChars;
+	private Collection<XTrace> traces;
 
-	public qPMSPM(int lMin, int lMax, double d, Set<Integer> n, double q, int threads, CostMapping<T> costs) {
-		this.motifLengthMin = lMin;
-		this.motifLengthMax = lMax;
+	public qPMSPM(int mlen, double d, double q, int threads, CostMapping<T> costs, AttributeMapping<T> a) {
+		this.motifLengthMax = mlen;
 		this.motifMaxDistance = d;
-		this.ngramLengths = n;
 		this.quorum = q;
 		this.threads = threads;
-		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
-		this.verifiedMotifs = new HashSet<String>();
+		this.potentialMotifs = new HashMap<>();
+		this.verifiedMotifs = new HashMap<>();
 		this.strings = new HashSet<String>();
 		this.costs = costs;
+		this.cvalues = a;
+		newPotentialMotifs = new HashMap<>();
 		charsToValues = new HashMap<Character, T>();
 		valuesToChars = new HashMap<T, Character>();
+		newstrings = new ArrayList<>();
+		traces = new ArrayList<>();
+		cvaluesasChars = new HashSet<>();
 	}
-	
-	public Set<String> getCandidateMotifs() {
-		Set<String> pm = new HashSet<String>();
-		for (HashSet<String> m : potentialMotifs.values()) {
-			pm.addAll(m);
-		}
-		return pm;
-	}
-	
-	public Set<String> getStringMotifs() {
-		return verifiedMotifs;
-	}
-	
-	public Set<Sequence<T>> getMotifs() {
+	/*
+	 * Return the list of UNIQUE motifs, not considering the attributes
+	 */
+	public Set<Sequence<T>> getCandidateMotifs() {
 		Set<Sequence<T>> motifs = new HashSet<Sequence<T>>();
-		for (String s : verifiedMotifs) {
+		for (Entry<String, HashMap<Character, List<String>>> s : newPotentialMotifs.entrySet()) {
 			Sequence<T> seq = new Sequence<T>();
-			for (int i = 0; i < s.length(); i++) {
-				seq.add(charsToValues.get(s.charAt(i)));
+			for (int i = 0; i < s.getKey().length(); i++) {
+				seq.add(charsToValues.get(s.getKey().charAt(i)));
 			}
+			//System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
 			motifs.add(seq);
 		}
 		return motifs;
 	}
-
-	public boolean addString(Sequence<T> string) {
-		String s = "";
-		for (int i = 0; i < string.size(); i++) {
-			T t = string.get(i);
-			if (!valuesToChars.containsKey(t)) {
-				char v = (char) ('@' + valuesToChars.size() + 1);
-				valuesToChars.put(t, v);
-				charsToValues.put(v, t);
-			}
-			s += valuesToChars.get(t);
-		}
-		return strings.add(s);
+	
+	public Set<String> getStringMotifs() {
+		return verifiedMotifs.keySet();
 	}
 	
+	public Map<Sequence<T>, Map<T, List<String>>> getMotifs() {
+		Map<Sequence<T>, Map<T, List<String>>> motifs = new HashMap();
+		//System.out.println("verified motifs "+ verifiedMotifs.toString());
+		for (Entry<String, HashMap<Character, List<String>>> s : verifiedMotifs.entrySet()) {
+			// for each motif --> attribs, I convert the motif name again to values
+			//for(Entry<Character, List<String>> attribs : s.getValue().entrySet()) {
+				Sequence<T> seq = new Sequence<T>();
+				//seq.add(charsToValues.get(s.getKey()));
+				for (int i = 0; i < s.getKey().length(); i++) {
+					seq.add(charsToValues.get(s.getKey().charAt(i)));
+				}
+				Map<T, List<String>> temp = new HashMap(); 
+				for(Entry<Character, List<String>> k : s.getValue().entrySet()) {
+					T seq2 = charsToValues.get(k.getKey());
+					temp.put(seq2, k.getValue());
+				}
+				
+				motifs.put(seq, temp);
+			//}
+		}
+		return motifs;
+	}
+	
+	public Collection<XTrace> getTraces() {
+		return traces;
+	}
+	public void addTrace(XTrace trace) {
+		this.traces.add(trace);
+	}
+
+	public boolean addString(XTrace trace) {
+		this.traces.add(trace);
+		// generate all the substrings of the strings
+		int stringLength = trace.size();
+		String traceToString = "";
+		if (stringLength >= motifLengthMax) {
+			for (int i = 0; i < stringLength; i++) {
+				HashMap<Character, Object> attrib = new HashMap<>();
+				String str = "";
+				int counter = 0;
+				// loop through the string until I reach the desired motif length
+				// So I have to go through all the elements from i on, until to reach the motif length
+				// Hence, I use the loop to go through the trace, starting from position i, i.e. position i+0, i+1, ..., i+n
+				for (int j=0; j<=stringLength; j++) {
+					if(i+j>=stringLength) {
+						break;
+					}
+					if(counter>motifLengthMax) {
+						break;
+					}
+					XEvent e = trace.get(j+i);
+					String ename = XConceptExtension.instance().extractName(e);
+					char v = 0;
+					if (!valuesToChars.containsKey(ename)) {
+						v = (char) ('@' + valuesToChars.size() + 1);
+						valuesToChars.put((T) ename, v);
+						charsToValues.put(v, (T) ename);
+					} else {
+						v= valuesToChars.get(ename);
+					}
+					if(cvalues.contains(ename)) {
+						cvaluesasChars.add(v);
+						attrib.put(v, e.getAttributes().get("value"));
+					} else {
+						// to have strings without env, uncomment here 
+						/*if(j==0) {
+							traceToString += valuesToChars.get((T) ename);
+						}*/
+						counter += 1;
+						str += valuesToChars.get((T) ename);
+					}
+					// to have strings with env, uncomment here
+					if(j==0) {
+						traceToString += valuesToChars.get((T) ename);
+					}
+					if(counter == motifLengthMax) {
+						// if the motif already exists, check if the set of attributes already exists
+						if(potentialMotifs.containsKey(str)) {
+							List<HashMap<Character, Object>> attributes = potentialMotifs.get(str);
+							// if not, add them to the list of the attributes
+							//if(!attributes.contains(attrib)) {
+								attributes.add(attrib);
+								potentialMotifs.put(str, attributes);
+							//} else {
+								//continue;
+							//}
+						} else {
+							// the element is completely new
+							List<HashMap<Character, Object>> attributes = new ArrayList<>();
+							attributes.add(attrib);
+							potentialMotifs.put(str, attributes);
+						}
+						break;
+					}
+				}
+			}
+		}
+		//System.out.println(valuesToChars);
+		return strings.add(traceToString);
+	}
+	
+	public void aggregateAttributes() {
+		for(Entry<String, List<HashMap<Character, Object>>> m : potentialMotifs.entrySet()) {
+			List<HashMap<Character, Object>> attributes = m.getValue();
+			HashMap<Character, List<String>> temp = new HashMap<>();
+			//for each hashmap, take they key and put the value in a list
+			for (HashMap<Character, Object> attr : attributes) {
+				for(Entry<Character, Object> el : attr.entrySet()) {
+					if(temp.containsKey(el.getKey())) {
+						temp.get(el.getKey()).add(el.getValue().toString());
+					} else {
+						List<String> p = new ArrayList<>();
+						p.add(el.getValue().toString());
+						temp.put(el.getKey(), p);
+					}
+					
+				}
+				// map.compute("Name", (key, val)-> val.concat(" Singh"));
+				//System.err.println("this is the attr list:" + temp);
+			}
+			if(!newPotentialMotifs.containsKey(m.getKey())) {
+				newPotentialMotifs.put(m.getKey(), temp);
+			} else {
+				newPotentialMotifs.get(m.getKey()).putAll(temp);
+			}
+		}
+		for(Entry<String, HashMap<Character, List<String>>> pm : newPotentialMotifs.entrySet()) {
+			HashMap values = new HashMap<>();
+			for(Entry<Character, List<String>> attr : pm.getValue().entrySet()) {
+				AttribOperation operation = cvalues.getOperation(charsToValues.get(attr.getKey()).toString());
+				if(operation.equals(AttribOperation.MEAN)) {
+					//IntStream intStream = convertListToStream(attr.getValue());
+					//values.put(attr.getKey(), Arrays.asList(intStream.average()));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMedian(attr.getValue()))));
+				}
+				if(operation.equals(AttribOperation.MAX)) {
+					//IntStream intStream = convertListToStream(attr.getValue());
+					//values.put(attr.getKey(), Arrays.asList(intStream.max()));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMax(attr.getValue()))));
+				}
+				if(operation.equals(AttribOperation.MIN)) {
+					//IntStream intStream = convertListToStream(attr.getValue());
+					//values.put(attr.getKey(), Arrays.asList(intStream.min()));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMin(attr.getValue()))));
+				}
+				if(operation.equals(AttribOperation.EQUALS)) {
+					values.put(attr.getKey(), attr.getValue());
+					// in this case I return a list of possible values, i.e. I do nothing
+				}
+			}
+			newPotentialMotifs.get(pm.getKey()).putAll(values);
+		}
+	}
+	
+	private double calculateAverage(List <String> marks) {
+	    return marks.stream()
+	                .mapToDouble(d -> Double.parseDouble(d))
+	                .average()
+	                .orElse(0.0);
+	}
+	
+	public double calculateMedian(List<String> arr) {
+		int n = arr.size();
+		List<Integer> a = new ArrayList<>();
+		for (int i = 0; i < arr.size(); i++) {
+			a.add(Integer.parseInt(arr.get(i)));
+		}
+		Collections.sort(a);
+		// check for even case
+		if (n % 2 != 0) return (double)a.get(n/2);
+		return (double)(a.get((n - 1) / 2) + a.get(n / 2)) / 2.0;
+	}
+	
+	private double calculateMin(List <String> marks) {
+	    return marks.stream()
+	                .mapToDouble(d -> Double.parseDouble(d))
+	                .min()
+	                .orElse(0.0);
+	}
+	
+	private double calculateMax(List <String> marks) {
+	    return marks.stream()
+	                .mapToDouble(d -> Double.parseDouble(d))
+	                .max()
+	                .orElse(0.0);
+	}
+	
+	public String printString() {
+		return "qPMSPM [strings=" + strings + "]";
+	}
+
 	public int getMinMotifLength() {
 		return motifLengthMin;
 	}
@@ -108,45 +311,12 @@ public class qPMSPM<T> {
 //	}
 	
 	public void verifyMotifs() {
-		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
-		@SuppressWarnings("unchecked")
-		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads+1];
-		for (Integer motifsSize : potentialMotifs.keySet()) {
-			int i = 0;
-			System.out.println("Size: " + motifsSize + " - tot candidate " + potentialMotifs.get(motifsSize).size() + ", partition size: " + (potentialMotifs.get(motifsSize).size() / this.threads));
-			for (List<String> strs : Iterables.partition(potentialMotifs.get(motifsSize), potentialMotifs.get(motifsSize).size() / this.threads)) {
-				if (partitionedSets[i] == null) {
-					partitionedSets[i] = new HashMap<Integer, List<String>>();
-				}
-				System.out.println("Adding " + strs.size() + " candidates with length " + motifsSize + " to element " + i);
-				partitionedSets[i].put(motifsSize, strs);
-				i++;
-			}
-		}
-		
-		for (int i = 0; i < partitionedSets.length; i++) {
-			if (partitionedSets[i] != null) {
-				System.out.println("Creating thread for " + partitionedSets[i].keySet().size() + " points");
-				MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(partitionedSets[i], strings, motifMaxDistance, quorum, costs, charsToValues);
-				threads.add(e);
-				e.start();
-				System.out.println("Starting thread");
-			}
-		}
-		
-		for (Thread t : threads) {
-			try {
-				t.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		
-		this.verifiedMotifs = new HashSet<String>();
-		for (MotifsVerifierExecutor<T> t : threads) {
-			verifiedMotifs.addAll(t.getVerifiedMotifs());
-		}
-		
+		// convert the cvalues table according to chars
+		MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(newPotentialMotifs, traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
+		System.out.println("Starting");
+		e.run();
+		this.verifiedMotifs = new HashMap<>();
+		verifiedMotifs.putAll(e.getVerifiedMotifs());
 //		this.verifiedMotifs = new HashSet<String>();
 //		for (String m : potentialMotifs) {
 //			double stringsWithMotif = 0;
@@ -168,43 +338,54 @@ public class qPMSPM<T> {
 	/**
 	 * Generate only motifs from the given string
 	 */
-	public void generateCandidateMotifs() {
-		this.potentialMotifs = new HashMap<Integer, HashSet<String>>();
-		
-		for (int ngramLength : ngramLengths) {
-			// generate all possible n-grams
-			Set<String> ngrams = new HashSet<String>();
-			for (String s : strings) {
-				int stringLength = s.length();
-				if (stringLength >= ngramLength) {
-					for (int i = 0; i <= stringLength - ngramLength; i++) {
-						ngrams.add(s.substring(i, i + ngramLength));
-					}
+	/*public void generateCandidateMotifs() {
+		// generate all the substrings of the strings
+		for (String s : strings) {
+			int stringLength = s.length();
+			if (stringLength >= motifLengthMax) {
+				for (int i = 0; i <= stringLength - motifLengthMax; i++) {
+					this.potentialMotifs.add(s.substring(i, i + motifLengthMax));
 				}
 			}
-			
-			// generate all motifs
-			int motifLength = getMinMotifLength();
-			while(motifLength <= getMaxMotifLength()) {
-				// generate motifs
-				recursiveGenerateMotif(ngrams, "", motifLength/ngramLength);
-				motifLength += ngramLength;
-			}
 		}
+	}*/
+	
+//	private void recursiveGenerateMotif(Set<String> ngrams, String output, int l) {
+//		if (l <= 0) {
+//			if (output.length() >= motifLengthMin) {
+//				if (!potentialMotifs.containsKey(output.length())) {
+//					potentialMotifs.put(output.length(), new HashSet<String>());
+//				}
+//				potentialMotifs.get(output.length()).add(output);
+//			}
+//			return;
+//		}
+//		for (String ngram : ngrams) {
+//			recursiveGenerateMotif(ngrams, output.concat(ngram), l - 1);
+//		}
+//	}
+
+	public static IntStream convertListToStream(List<String> list) {
+		List<Integer> integerArray = new ArrayList<>();
+		// copy elements from object array to integer array
+		for (int i = 0; i < list.size(); i++) {
+			integerArray.add(Integer.parseInt(list.get(i)));
+		}
+		
+	    return integerArray.stream().flatMapToInt(IntStream::of);
 	}
 	
-	private void recursiveGenerateMotif(Set<String> ngrams, String output, int l) {
-		if (l <= 0) {
-			if (output.length() >= motifLengthMin) {
-				if (!potentialMotifs.containsKey(output.length())) {
-					potentialMotifs.put(output.length(), new HashSet<String>());
-				}
-				potentialMotifs.get(output.length()).add(output);
-			}
-			return;
+	public static Supplier<Stream<List<Integer>>> convertListToStream2(List<String> list) {
+		List<Integer> integerArray = new ArrayList<>();
+		// copy elements from object array to integer array
+		for (int i = 0; i < list.size(); i++) {
+			integerArray.add(Integer.parseInt(list.get(i)));
 		}
-		for (String ngram : ngrams) {
-			recursiveGenerateMotif(ngrams, output.concat(ngram), l - 1);
-		}
+		
+		Supplier<Stream<List<Integer>>> streamSupplier 
+		  = () -> Stream.of(integerArray);
+		return streamSupplier;
+		
 	}
 }
+

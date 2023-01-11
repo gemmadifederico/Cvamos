@@ -3,26 +3,23 @@
 	<extension name="Concept" prefix="concept" uri="http://www.xes-standard.org/concept.xesext"/>
 	<trace>
 		<string key="concept:name" value="1"/>
-		<event><string key="concept:name" value="A"/><string key="test" value="v1.1" /><string key="test2" value="v21.1" /></event>
 		<event><string key="concept:name" value="A"/></event>
 		<event><string key="concept:name" value="B"/></event>
-		<event><string key="concept:name" value="C"/><string key="test" value="v1.2" /><string key="test2" value="v21.2" /></event>
-		<event><string key="concept:name" value="A"/></event>
 		<event><string key="concept:name" value="B"/></event>
-		<event><string key="concept:name" value="D"/></event>
-	</trace>
-	<trace>
-		<string key="concept:name" value="2"/>
-		<event><string key="concept:name" value="A"/><string key="test" value="v2.1" /><string key="test2" value="v22.1" /></event>
-		<event><string key="concept:name" value="B"/><string key="test" value="v2.2" /><string key="test2" value="v22.2" /></event>
-		<event><string key="concept:name" value="E"/></event>
-		<event><string key="concept:name" value="F"/><string key="test" value="v2.3" /><string key="test2" value="v22.2" /></event>
-	</trace>
-	<trace>
-		<string key="concept:name" value="2"/>
+		<event><string key="concept:name" value="B"/></event>
+		<event><string key="concept:name" value="B"/></event>
+		<event><string key="concept:name" value="B"/></event>
 		<event><string key="concept:name" value="C"/></event>
-		<event><string key="concept:name" value="D"/></event>
-		<event><string key="concept:name" value="E"/><string key="test" value="v3" /><string key="test2" value="v23" /></event>
-		<event><string key="concept:name" value="F"/></event>
+		<event><string key="concept:name" value="C"/></event>
+		<event><string key="concept:name" value="C"/></event>
+	</trace>
+		<trace>
+		<string key="concept:name" value="2"/>
+		<event><string key="concept:name" value="A"/></event>
+		<event><string key="concept:name" value="A"/></event>
+		<event><string key="concept:name" value="B"/></event>
+		<event><string key="concept:name" value="B"/></event>
+		<event><string key="concept:name" value="B"/></event>
+		<event><string key="concept:name" value="B"/></event>
 	</trace>
 </log>
