@@ -16,7 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -28,8 +30,10 @@ import org.deckfour.xes.model.XEvent;
 import org.deckfour.xes.model.XTrace;
 
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 import dtu.qpms.model.AttributeMapping.AttribOperation;
+import dtu.qpms.utils.Operations;
 
 public class qPMSPM<T> {
 	
@@ -78,7 +82,7 @@ public class qPMSPM<T> {
 			for (int i = 0; i < s.getKey().length(); i++) {
 				seq.add(charsToValues.get(s.getKey().charAt(i)));
 			}
-			//System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
+			System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
 			motifs.add(seq);
 		}
 		return motifs;
@@ -221,17 +225,17 @@ public class qPMSPM<T> {
 				if(operation.equals(AttribOperation.MEAN)) {
 					//IntStream intStream = convertListToStream(attr.getValue());
 					//values.put(attr.getKey(), Arrays.asList(intStream.average()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMedian(attr.getValue()))));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMedian(attr.getValue()))));
 				}
 				if(operation.equals(AttribOperation.MAX)) {
 					//IntStream intStream = convertListToStream(attr.getValue());
 					//values.put(attr.getKey(), Arrays.asList(intStream.max()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMax(attr.getValue()))));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
 				}
 				if(operation.equals(AttribOperation.MIN)) {
 					//IntStream intStream = convertListToStream(attr.getValue());
 					//values.put(attr.getKey(), Arrays.asList(intStream.min()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(calculateMin(attr.getValue()))));
+					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
 				}
 				if(operation.equals(AttribOperation.EQUALS)) {
 					values.put(attr.getKey(), attr.getValue());
@@ -240,39 +244,6 @@ public class qPMSPM<T> {
 			}
 			newPotentialMotifs.get(pm.getKey()).putAll(values);
 		}
-	}
-	
-	private double calculateAverage(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .average()
-	                .orElse(0.0);
-	}
-	
-	public double calculateMedian(List<String> arr) {
-		int n = arr.size();
-		List<Integer> a = new ArrayList<>();
-		for (int i = 0; i < arr.size(); i++) {
-			a.add(Integer.parseInt(arr.get(i)));
-		}
-		Collections.sort(a);
-		// check for even case
-		if (n % 2 != 0) return (double)a.get(n/2);
-		return (double)(a.get((n - 1) / 2) + a.get(n / 2)) / 2.0;
-	}
-	
-	private double calculateMin(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .min()
-	                .orElse(0.0);
-	}
-	
-	private double calculateMax(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .max()
-	                .orElse(0.0);
 	}
 	
 	public String printString() {
@@ -311,12 +282,54 @@ public class qPMSPM<T> {
 //	}
 	
 	public void verifyMotifs() {
+		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
+		@SuppressWarnings("unchecked")
+		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads+1];
+		System.out.println("- tot candidate " + newPotentialMotifs.size() + ", partition size: " + (newPotentialMotifs.size() / this.threads));
+		
+		AtomicInteger counter = new AtomicInteger(0);
+		int i = 0;
+		Map<Boolean, Map<String, HashMap<Character, List<String>>>> collect = newPotentialMotifs.entrySet()
+		    .stream()
+		   .collect(Collectors.partitioningBy(
+		       e -> counter.getAndIncrement() < newPotentialMotifs.size() / 2, // this splits the map into 2 parts
+		       Collectors.toMap(
+		           Map.Entry::getKey, 
+		           Map.Entry::getValue
+		       )
+		   ));
+		System.out.println("Starting thread");
+		
+		MotifsVerifierExecutor<T> e1 = new MotifsVerifierExecutor<T>(collect.get(true), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
+		threads.add(e1);
+		e1.start();
+		
+		MotifsVerifierExecutor<T> e2 = new MotifsVerifierExecutor<T>(collect.get(false), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
+		threads.add(e2);
+		e2.start();
+		
+		for (Thread t : threads) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
+		for (MotifsVerifierExecutor<T> t : threads) {
+			verifiedMotifs.putAll(t.getVerifiedMotifs());
+		}
+		
+		
 		// convert the cvalues table according to chars
-		MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(newPotentialMotifs, traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
-		System.out.println("Starting");
-		e.run();
-		this.verifiedMotifs = new HashMap<>();
-		verifiedMotifs.putAll(e.getVerifiedMotifs());
+		//MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(newPotentialMotifs, traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
+		
+		//e.run();
+		//this.verifiedMotifs = new HashMap<>();
+		//verifiedMotifs.putAll(e.getVerifiedMotifs());
+		
+		//-------------------------------------------
+		
 //		this.verifiedMotifs = new HashSet<String>();
 //		for (String m : potentialMotifs) {
 //			double stringsWithMotif = 0;

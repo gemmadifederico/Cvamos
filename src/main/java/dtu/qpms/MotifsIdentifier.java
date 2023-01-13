@@ -79,7 +79,7 @@ public class MotifsIdentifier {
 		int motifsLength = Integer.parseInt(args[4]);
 		int maxDistance = Integer.parseInt(args[5]);
 		double quorum = Double.parseDouble(args[6]);
-		int threads = 5;
+		int threads = 2;
 		
 		AttributeMapping<String> a = new AttributeMapping<String>();
 		a.read(attrFile);
@@ -120,10 +120,10 @@ public class MotifsIdentifier {
 			//p.addTrace(t);
 		}
 		p.aggregateAttributes();
-		/*System.out.println("Candidate motifs: ");
+		System.out.println("Candidate motifs: ");
 		for (Sequence<String> b: p.getCandidateMotifs()) {
 			System.out.println(b);
-		}*/
+		}
 		System.out.println("Done! - " + p.getCandidateMotifs().size() + " motifs identified in " + (System.currentTimeMillis() - time) + "ms");
 
 		/*time = System.currentTimeMillis();

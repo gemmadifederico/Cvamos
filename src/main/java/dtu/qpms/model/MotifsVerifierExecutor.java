@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.Set;
 
@@ -19,6 +20,7 @@ import org.deckfour.xes.model.XEvent;
 import org.deckfour.xes.model.XTrace;
 
 import dtu.qpms.model.AttributeMapping.AttribOperation;
+import dtu.qpms.utils.Operations;
 
 public class MotifsVerifierExecutor<T> extends Thread{
 
@@ -54,7 +56,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 		this.quorum = quorum;
 		this.cvalues = cvalues;
 		this.hamming = new HammingDistance<T>(costs, cvalues, map);
-		this.bitap = new BitapDistance<T>(costs, map);
+		this.bitap = new BitapDistance<T>(costs,cvalues, map);
 		this.valuesToChar = valuesToChar;
 	}
 	
@@ -137,13 +139,14 @@ public class MotifsVerifierExecutor<T> extends Thread{
 						// now we have to compare the motif first, and the attributes after
 						// let's start with the motif
 						if (hamming.distance(str, m.getKey()) <= maxDistance) {
-//							if(bitap.distance(string.substring(i, i + motifLength), motif, maxDistance) <= maxDistance) {
+// uncomment to switch to bitap	if(bitap.distance(str, m.getKey(), maxDistance) <= maxDistance) {
 							// there is a motif match, but we have to check the attributes
 							// the distance is lower than the maxDistance, hence I have to check the attributes
 							// now the list of attributes is complex, indeed attrib is a list of elements that needs to be aggregated before to be compared to the motif attribs
 							HashMap<Character,  List<String>> aggAttrib = aggregateAttributes(attrib);
+							// If the set of attributes of the compared string is empty, there is a match anyway
 							//System.out.println(aggAttrib + " ---- " + m.getValue().toString());
-							if (hamming.distanceAttributes(aggAttrib, m.getValue()) <= maxDistance) {
+							if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, m.getValue()) <= maxDistance) {
 								return true;
 							} else {
 								//System.err.println("there is a match but not in attributes");
@@ -165,18 +168,18 @@ public class MotifsVerifierExecutor<T> extends Thread{
 			Character attrChar = valuesToChar.get(attr.getKey());
 			AttribOperation operation = cvalues.getOperation(attr.getKey().toString());
 			if(operation.equals(AttribOperation.MEAN)) {
-				IntStream intStream = convertListToStream(attr.getValue());
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(calculateMedian(attr.getValue()))));
+				DoubleStream intStream = Operations.convertListToStream(attr.getValue());
+				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMedian(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.MAX)) {
 				//IntStream intStream = convertListToStream(attr.getValue());
 				//aggAttribs.put(attrChar, Arrays.asList(intStream.max()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(calculateMax(attr.getValue()))));
+				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.MIN)) {
 				// IntStream intStream = convertListToStream(attr.getValue());
 				// aggAttribs.put(attrChar, Arrays.asList(intStream.min()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(calculateMin(attr.getValue()))));
+				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.EQUALS)) {
 				aggAttribs.put(attrChar, attr.getValue());
@@ -184,39 +187,6 @@ public class MotifsVerifierExecutor<T> extends Thread{
 			}
 		}
 		return aggAttribs;
-	}
-	
-	private double calculateAverage(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .average()
-	                .orElse(0.0);
-	}
-	
-	public double calculateMedian(List<String> arr) {
-		int n = arr.size();
-		List<Integer> a = new ArrayList<>();
-		for (int i = 0; i < arr.size(); i++) {
-			a.add(Integer.parseInt(arr.get(i)));
-		}
-		Collections.sort(a);
-		// check for even case
-		if (n % 2 != 0) return (double)a.get(n/2);
-		return (double)(a.get((n - 1) / 2) + a.get(n / 2)) / 2.0;
-	}
-	
-	private double calculateMin(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .min()
-	                .orElse(0.0);
-	}
-	
-	private double calculateMax(List <String> marks) {
-	    return marks.stream()
-	                .mapToDouble(d -> Double.parseDouble(d))
-	                .max()
-	                .orElse(0.0);
 	}
 
 	private boolean verifyMotifInString(String string, String motif, double maxDistance) {
@@ -336,13 +306,5 @@ public class MotifsVerifierExecutor<T> extends Thread{
 		}
 		return false;
 	}
-	public static IntStream convertListToStream(List<String> list) {
-		List<Integer> integerArray = new ArrayList<>();
-		// copy elements from object array to integer array
-		for (int i = 0; i < list.size(); i++) {
-			integerArray.add(Integer.parseInt(list.get(i)));
-		}
-		
-	    return integerArray.stream().flatMapToInt(IntStream::of);
-	}
+	
 }
