@@ -82,7 +82,7 @@ public class qPMSPM<T> {
 			for (int i = 0; i < s.getKey().length(); i++) {
 				seq.add(charsToValues.get(s.getKey().charAt(i)));
 			}
-			System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
+			// System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
 			motifs.add(seq);
 		}
 		return motifs;
@@ -307,7 +307,7 @@ public class qPMSPM<T> {
 		MotifsVerifierExecutor<T> e2 = new MotifsVerifierExecutor<T>(collect.get(false), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
 		threads.add(e2);
 		e2.start();
-		
+		 
 		for (Thread t : threads) {
 			try {
 				t.join();

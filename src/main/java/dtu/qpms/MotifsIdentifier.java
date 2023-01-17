@@ -7,6 +7,7 @@ import java.io.FileWriter;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -120,10 +121,10 @@ public class MotifsIdentifier {
 			//p.addTrace(t);
 		}
 		p.aggregateAttributes();
-		System.out.println("Candidate motifs: ");
+		/*System.out.println("Candidate motifs: ");
 		for (Sequence<String> b: p.getCandidateMotifs()) {
 			System.out.println(b);
-		}
+		}*/
 		System.out.println("Done! - " + p.getCandidateMotifs().size() + " motifs identified in " + (System.currentTimeMillis() - time) + "ms");
 
 		/*time = System.currentTimeMillis();
@@ -140,17 +141,21 @@ public class MotifsIdentifier {
 		System.out.print("4. Saving motifs... ");
 		int motifCounter = 1;
 		XLog logMotifs = XLogHelper.generateNewXLog("motifs");
+		SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 		for(Entry<Sequence<String>, Map<String, List<String>>> seq : p.getMotifs().entrySet()) {
 			XTrace t = XLogHelper.createTrace("case_" + motifCounter);
 			// inserting the events
 			for (String s : seq.getKey()) {
 				XEvent ev = XLogHelper.insertEvent(t, s);
+				XLogHelper.decorateElement(ev, "value", 0.0);
+				XLogHelper.setTimestamp(ev, new Date());
 			}
 			// inserting the attribs as events, and decorating with the value
 			for (Entry<String, List<String>> el : seq.getValue().entrySet()) {		
 				for(int i=0; i<el.getValue().size(); i ++) {
 					XEvent ev = XLogHelper.insertEvent(t, el.getKey());
 					XLogHelper.decorateElement(ev, "value", el.getValue().get(i));
+					XLogHelper.setTimestamp(ev, new Date());
 				}
 			}
 			logMotifs.add(t);
