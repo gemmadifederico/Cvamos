@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.deckfour.xes.extension.std.XConceptExtension;
 import org.deckfour.xes.model.XEvent;
@@ -25,8 +26,8 @@ import dtu.qpms.utils.Operations;
 public class MotifsVerifierExecutor<T> extends Thread{
 
 	//private Set<String> potentialMotifs;
-	private Map<String, HashMap<Character, List<String>>> potentialMotifs;
-	private Map<String, HashMap<Character, List<String>>> verifiedMotifs;
+	private List<Map<String, HashMap<Character, String>>> potentialMotifs;
+	private Map<String, HashMap<Character, String>> verifiedMotifs;
 	private Map<String, List<HashMap<Character, Object>>> tempVerifiedMotifs;
 	private Collection<String> strings;
 	private double motifMaxDistance;
@@ -38,7 +39,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 	private Map<T, Character> valuesToChar;
 	
 	public MotifsVerifierExecutor(
-			Map<String, HashMap<Character, List<String>>> newPotentialMotifs,
+			List<Map<String, HashMap<Character, String>>> newPotentialMotifs,
 			//Collection<String> strings,
 			Collection<XTrace> traces,
 			double motifMaxDistance,
@@ -60,7 +61,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 		this.valuesToChar = valuesToChar;
 	}
 	
-	public Map<String, HashMap<Character, List<String>>> getVerifiedMotifs() {
+	public Map<String, HashMap<Character, String>> getVerifiedMotifs() {
 		return verifiedMotifs;
 	}
 
@@ -71,33 +72,32 @@ public class MotifsVerifierExecutor<T> extends Thread{
 	
 	public void verifyMotifs() {
 		this.verifiedMotifs = new HashMap<>();
-		int i = 0;
 //			int motifsFound = 0;
-		for (Entry<String, HashMap<Character, List<String>>> m : potentialMotifs.entrySet()) {
-			double stringsWithMotif = 0;
-			i++;
-			for(XTrace s: traces) {
-			//for (String s : strings) {
-				if (verifyMotifInStringOld(s, m, motifMaxDistance)) {
-					stringsWithMotif++;
-				} else {
-					if (quorum == 1d) {
-						break;
+		for (Map<String, HashMap<Character, String>> l : potentialMotifs) {
+			for(Entry<String, HashMap<Character, String>> m : l.entrySet()) {
+				double stringsWithMotif = 0;
+				for(XTrace s: traces) {
+				//for (String s : strings) {
+					if (verifyMotifInStringOld(s, m, motifMaxDistance)) {
+						stringsWithMotif++;
+					} else {
+						if (quorum == 1d) {
+							break;
+						}
 					}
 				}
-			}
-			if (stringsWithMotif / traces.size() >= quorum) {
-				verifiedMotifs.put(m.getKey(), m.getValue());
-//				motifsFound++;
+				if (stringsWithMotif / traces.size() >= quorum) {
+					verifiedMotifs.put(m.getKey(), m.getValue());
+	//				motifsFound++;
+				}
 			}
 		}
 //			if (motifsFound == 0) {
 //				break;
 //			}
-//	System.out.println(i + " motifs verified");
 	}
 	
-	private boolean verifyMotifInStringOld(XTrace string, Entry<String, HashMap<Character, List<String>>> m, double maxDistance) {
+	private boolean verifyMotifInStringOld(XTrace string, Entry<String,HashMap<Character, String>> m, double maxDistance) {
 		int motifLength = m.getKey().length();
 		int stringLength = string.size();
 		//System.err.println(m);
@@ -143,14 +143,14 @@ public class MotifsVerifierExecutor<T> extends Thread{
 							// there is a motif match, but we have to check the attributes
 							// the distance is lower than the maxDistance, hence I have to check the attributes
 							// now the list of attributes is complex, indeed attrib is a list of elements that needs to be aggregated before to be compared to the motif attribs
-							HashMap<Character,  List<String>> aggAttrib = aggregateAttributes(attrib);
+							HashMap<Character, String> aggAttrib = aggregateAttributes(attrib);
 							// If the set of attributes of the compared string is empty, there is a match anyway
 							//System.out.println(aggAttrib + " ---- " + m.getValue().toString());
 							if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, m.getValue()) <= maxDistance) {
 								return true;
 							} else {
 								//System.err.println("there is a match but not in attributes");
-								return false;
+								break;
 							}
 						} else {
 							break;
@@ -162,24 +162,24 @@ public class MotifsVerifierExecutor<T> extends Thread{
 		return false;
 	}
 	
-	private HashMap<Character, List<String>> aggregateAttributes(HashMap<String, List<String>> attrib) {
+	private HashMap<Character, String> aggregateAttributes(HashMap<String, List<String>> attrib) {
 		HashMap aggAttribs = new HashMap<>();
 		for(Entry<String, List<String>> attr : attrib.entrySet()) {
 			Character attrChar = valuesToChar.get(attr.getKey());
 			AttribOperation operation = cvalues.getOperation(attr.getKey().toString());
 			if(operation.equals(AttribOperation.MEAN)) {
 				DoubleStream intStream = Operations.convertListToStream(attr.getValue());
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMedian(attr.getValue()))));
+				aggAttribs.put(attrChar, (String.valueOf(Operations.calculateMedianString(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.MAX)) {
 				//IntStream intStream = convertListToStream(attr.getValue());
 				//aggAttribs.put(attrChar, Arrays.asList(intStream.max()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
+				aggAttribs.put(attrChar,(String.valueOf(Operations.calculateMaxString(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.MIN)) {
 				// IntStream intStream = convertListToStream(attr.getValue());
 				// aggAttribs.put(attrChar, Arrays.asList(intStream.min()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
+				aggAttribs.put(attrChar, (String.valueOf(Operations.calculateMinString(attr.getValue()))));
 			}
 			if(operation.equals(AttribOperation.EQUALS)) {
 				aggAttribs.put(attrChar, attr.getValue());

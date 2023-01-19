@@ -30,33 +30,50 @@ public class HammingDistance<T> {
 		return count;
 	}
 
-	public double distanceAttributes(HashMap<Character,  List<String>> stringAttribs, HashMap<Character, List<String>> motifAttribs) {
+	public double distanceAttributes(HashMap<Character,  String> stringAttribs, HashMap<Character, String> list) {
+		double totDistance = 0;
 		// the motif and the substring matches, now we have to check the attributes
 		// a motif can have different lists of attributes
 		// given each pair motif+list of attributes, we compare it with the actual substring+list of attributes
 		// in particular, we have to check if the attributes in the motif are contained in the list of attributes of the substring
 		// and that their values are more or less similar.
-		double totDistance = 0;
-		for(Entry<Character, List<String>> motifAttr : motifAttribs.entrySet()) {
-			if(stringAttribs.containsKey(motifAttr.getKey())) {
-				// the substring contains the given motif attrib
-				double tolerance = attribs.getTolerance(map.get(motifAttr.getKey()));
-				/* System.out.println("comparing: " + Double.parseDouble(motifAttr.getValue().get(0)) + 
-						" with: " + Double.parseDouble(stringAttribs.get(motifAttr.getKey()).get(0))
-						+ "tolerance: " + tolerance); */
-				if((Double.parseDouble(motifAttr.getValue().get(0)) - tolerance) <= (Double.parseDouble(stringAttribs.get(motifAttr.getKey()).get(0))) &&
-						(Double.parseDouble(stringAttribs.get(motifAttr.getKey()).get(0))) <= (Double.parseDouble(motifAttr.getValue().get(0)) + tolerance)) {
-						totDistance += 0;
-				} else {
-					double a = (Double.parseDouble(motifAttr.getValue().get(0)) + tolerance) - (Double.parseDouble(stringAttribs.get(motifAttr.getKey()).get(0)));
-					double b = (Double.parseDouble(motifAttr.getValue().get(0)) - tolerance) - (Double.parseDouble(stringAttribs.get(motifAttr.getKey()).get(0)));
-					totDistance += Math.min(Math.abs(a), Math.abs(b));
-				}
-			} else {
-				totDistance += 200;
+		
+		if(stringAttribs.isEmpty()) {
+			if(list.isEmpty()) {
+				totDistance = 0;
 			}
+		} else {
+	        if (list.keySet().equals(stringAttribs.keySet())) {
+	            // there is a match in keys
+	        	// now I have to check the values
+	        	for(Entry<Character, String> b : list.entrySet()) {
+		        	double tolerance = attribs.getTolerance(map.get(b.getKey()));
+		        	/* System.out.println("comparing: " + Double.parseDouble(b.getValue()) + 
+					" with: " + Double.parseDouble(stringAttribs.get(b.getKey()))
+					+ "tolerance: " + tolerance); */
+						if((Double.parseDouble(b.getValue()) - tolerance) <= (Double.parseDouble(stringAttribs.get(b.getKey()))) &&
+								(Double.parseDouble(stringAttribs.get(b.getKey()))) <= (Double.parseDouble(b.getValue()) + tolerance)) {
+								totDistance += 0;
+						} else {
+							double x = (Double.parseDouble(b.getValue()) + tolerance) - (Double.parseDouble(stringAttribs.get(b.getKey())));
+							double y = (Double.parseDouble(b.getValue()) - tolerance) - (Double.parseDouble(stringAttribs.get(b.getKey())));
+							totDistance += Math.min(Math.abs(x), Math.abs(y));
+						}
+	        	}
+		    } else {
+		    	totDistance += 200;
+		    }
 		}
-		// System.err.println(totDistance);
 		return totDistance;
+	}
+	
+	public boolean hasSameKey(List<HashMap<Character,String>> a, HashMap<Character, String> b) {
+		for(HashMap<Character, String> map: a) {
+	        if (map.keySet().equals(b.keySet())) {
+	            return true;
+		    }
+		}
+		return false;
+		
 	}
 }

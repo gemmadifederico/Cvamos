@@ -80,7 +80,7 @@ public class MotifsIdentifier {
 		int motifsLength = Integer.parseInt(args[4]);
 		int maxDistance = Integer.parseInt(args[5]);
 		double quorum = Double.parseDouble(args[6]);
-		int threads = 2;
+		int threads = Integer.parseInt(args[7]);
 		
 		AttributeMapping<String> a = new AttributeMapping<String>();
 		a.read(attrFile);
@@ -142,7 +142,7 @@ public class MotifsIdentifier {
 		int motifCounter = 1;
 		XLog logMotifs = XLogHelper.generateNewXLog("motifs");
 		SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-		for(Entry<Sequence<String>, Map<String, List<String>>> seq : p.getMotifs().entrySet()) {
+		for(Entry<Sequence<String>, Map<String, String>> seq : p.getMotifs().entrySet()) {
 			XTrace t = XLogHelper.createTrace("case_" + motifCounter);
 			// inserting the events
 			for (String s : seq.getKey()) {
@@ -151,12 +151,10 @@ public class MotifsIdentifier {
 				XLogHelper.setTimestamp(ev, new Date());
 			}
 			// inserting the attribs as events, and decorating with the value
-			for (Entry<String, List<String>> el : seq.getValue().entrySet()) {		
-				for(int i=0; i<el.getValue().size(); i ++) {
-					XEvent ev = XLogHelper.insertEvent(t, el.getKey());
-					XLogHelper.decorateElement(ev, "value", el.getValue().get(i));
-					XLogHelper.setTimestamp(ev, new Date());
-				}
+			for (Entry<String, String> el : seq.getValue().entrySet()) {		
+				XEvent ev = XLogHelper.insertEvent(t, el.getKey());
+				XLogHelper.decorateElement(ev, "value", el.getValue());
+				XLogHelper.setTimestamp(ev, new Date());
 			}
 			logMotifs.add(t);
 			motifCounter++;
