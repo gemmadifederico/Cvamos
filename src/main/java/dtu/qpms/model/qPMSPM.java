@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.lang3.tuple.Pair;
 import org.deckfour.xes.extension.std.XConceptExtension;
 import org.deckfour.xes.model.XAttribute;
 import org.deckfour.xes.model.XEvent;
@@ -43,9 +44,9 @@ public class qPMSPM<T> {
 	private Set<Integer> ngramLengths;
 	private double quorum;
 	private int threads;
-	private Map<String, List<HashMap<Character, Object>>> potentialMotifs;
-	private Map<String, HashMap<Character, List<String>>> newPotentialMotifs;
-	private Map<String, HashMap<Character, List<String>>> verifiedMotifs;
+	private Map<String, List<HashMap<Character, List<Object>>>> potentialMotifs;
+	private Map<String, List<HashMap<Character, String>>> newPotentialMotifs;
+	private Map<String,HashMap<Character, String>>verifiedMotifs;
 	private List<Map.Entry<XAttribute, XAttribute>> newstrings;
 	private Set<String> strings;
 	private CostMapping<T> costs;
@@ -77,12 +78,11 @@ public class qPMSPM<T> {
 	 */
 	public Set<Sequence<T>> getCandidateMotifs() {
 		Set<Sequence<T>> motifs = new HashSet<Sequence<T>>();
-		for (Entry<String, HashMap<Character, List<String>>> s : newPotentialMotifs.entrySet()) {
+		for (Entry<String, List<HashMap<Character,String>>> s : newPotentialMotifs.entrySet()) {
 			Sequence<T> seq = new Sequence<T>();
 			for (int i = 0; i < s.getKey().length(); i++) {
 				seq.add(charsToValues.get(s.getKey().charAt(i)));
 			}
-			// System.err.println(s.getKey() + " " +seq+ " -- " + s.getValue());
 			motifs.add(seq);
 		}
 		return motifs;
@@ -92,10 +92,9 @@ public class qPMSPM<T> {
 		return verifiedMotifs.keySet();
 	}
 	
-	public Map<Sequence<T>, Map<T, List<String>>> getMotifs() {
-		Map<Sequence<T>, Map<T, List<String>>> motifs = new HashMap();
-		//System.out.println("verified motifs "+ verifiedMotifs.toString());
-		for (Entry<String, HashMap<Character, List<String>>> s : verifiedMotifs.entrySet()) {
+	public Map<Sequence<T>, Map<T, String>> getMotifs() {
+		Map<Sequence<T>, Map<T, String>> motifs = new HashMap();
+		for (Entry<String, HashMap<Character, String>> s : verifiedMotifs.entrySet()) {
 			// for each motif --> attribs, I convert the motif name again to values
 			//for(Entry<Character, List<String>> attribs : s.getValue().entrySet()) {
 				Sequence<T> seq = new Sequence<T>();
@@ -103,10 +102,12 @@ public class qPMSPM<T> {
 				for (int i = 0; i < s.getKey().length(); i++) {
 					seq.add(charsToValues.get(s.getKey().charAt(i)));
 				}
-				Map<T, List<String>> temp = new HashMap(); 
-				for(Entry<Character, List<String>> k : s.getValue().entrySet()) {
-					T seq2 = charsToValues.get(k.getKey());
-					temp.put(seq2, k.getValue());
+				Map<T, String> temp = new HashMap(); 
+				
+				HashMap<Character, String> k = s.getValue();
+				for(Entry<Character, String> el : k.entrySet()) {
+					T seq2 = charsToValues.get(el.getKey());
+					temp.put(seq2, el.getValue());
 				}
 				
 				motifs.put(seq, temp);
@@ -129,7 +130,7 @@ public class qPMSPM<T> {
 		String traceToString = "";
 		if (stringLength >= motifLengthMax) {
 			for (int i = 0; i < stringLength; i++) {
-				HashMap<Character, Object> attrib = new HashMap<>();
+				HashMap<Character, List<Object>> attrib = new HashMap<>();
 				String str = "";
 				int counter = 0;
 				// loop through the string until I reach the desired motif length
@@ -154,7 +155,11 @@ public class qPMSPM<T> {
 					}
 					if(cvalues.contains(ename)) {
 						cvaluesasChars.add(v);
-						attrib.put(v, e.getAttributes().get("value"));
+						if(attrib.containsKey(v)) {
+							attrib.get(v).add(e.getAttributes().get("value"));
+						} else {
+							attrib.put(v, new ArrayList<>(Arrays.asList(e.getAttributes().get("value"))));
+						}
 					} else {
 						// to have strings without env, uncomment here 
 						/*if(j==0) {
@@ -169,18 +174,19 @@ public class qPMSPM<T> {
 					}
 					if(counter == motifLengthMax) {
 						// if the motif already exists, check if the set of attributes already exists
+						//System.out.println(potentialMotifs.toString());
 						if(potentialMotifs.containsKey(str)) {
-							List<HashMap<Character, Object>> attributes = potentialMotifs.get(str);
+							List<HashMap<Character, List<Object>>> attributes = potentialMotifs.get(str);
 							// if not, add them to the list of the attributes
-							//if(!attributes.contains(attrib)) {
+							// if one of the hashmap inside attributes has the same set of keys attrib, then it's ok
+							// otherwise I have to put attrib in attributes
+							if(!hasSameKey(attributes, attrib)) {
 								attributes.add(attrib);
 								potentialMotifs.put(str, attributes);
-							//} else {
-								//continue;
-							//}
+							} 
 						} else {
 							// the element is completely new
-							List<HashMap<Character, Object>> attributes = new ArrayList<>();
+							List<HashMap<Character, List<Object>>> attributes = new ArrayList<>();
 							attributes.add(attrib);
 							potentialMotifs.put(str, attributes);
 						}
@@ -194,56 +200,54 @@ public class qPMSPM<T> {
 	}
 	
 	public void aggregateAttributes() {
-		for(Entry<String, List<HashMap<Character, Object>>> m : potentialMotifs.entrySet()) {
-			List<HashMap<Character, Object>> attributes = m.getValue();
-			HashMap<Character, List<String>> temp = new HashMap<>();
-			//for each hashmap, take they key and put the value in a list
-			for (HashMap<Character, Object> attr : attributes) {
-				for(Entry<Character, Object> el : attr.entrySet()) {
-					if(temp.containsKey(el.getKey())) {
-						temp.get(el.getKey()).add(el.getValue().toString());
-					} else {
-						List<String> p = new ArrayList<>();
-						p.add(el.getValue().toString());
-						temp.put(el.getKey(), p);
+		for(Entry<String, List<HashMap<Character, List<Object>>>> pm : potentialMotifs.entrySet()) {
+			ArrayList newlist = new ArrayList();
+			for(HashMap<Character, List<Object>> ms : pm.getValue()) {
+				HashMap values = new HashMap<>();
+				for(Entry<Character, List<Object>> attr : ms.entrySet()) {
+					AttribOperation operation = cvalues.getOperation(charsToValues.get(attr.getKey()).toString());
+					if(operation.equals(AttribOperation.MEAN)) {
+						//IntStream intStream = convertListToStream(attr.getValue());
+						//values.put(attr.getKey(), Arrays.asList(intStream.average()));
+						values.put(attr.getKey(), String.valueOf(Operations.calculateMedian(attr.getValue())));
 					}
-					
+					if(operation.equals(AttribOperation.MAX)) {
+						//IntStream intStream = convertListToStream(attr.getValue());
+						//values.put(attr.getKey(), Arrays.asList(intStream.max()));
+						values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
+					}
+					if(operation.equals(AttribOperation.MIN)) {
+						//IntStream intStream = convertListToStream(attr.getValue());
+						//values.put(attr.getKey(), Arrays.asList(intStream.min()));
+						values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
+					}
+					if(operation.equals(AttribOperation.EQUALS)) {
+						values.put(attr.getKey(), attr.getValue());
+						// in this case I return a list of possible values, i.e. I do nothing
+					}
 				}
-				// map.compute("Name", (key, val)-> val.concat(" Singh"));
-				//System.err.println("this is the attr list:" + temp);
+			newlist.add(values);
 			}
-			if(!newPotentialMotifs.containsKey(m.getKey())) {
-				newPotentialMotifs.put(m.getKey(), temp);
+			if(newPotentialMotifs.get(pm.getKey()) != null){
+				newPotentialMotifs.get(pm.getKey()).addAll(newlist);
+				// System.out.println("first");
 			} else {
-				newPotentialMotifs.get(m.getKey()).putAll(temp);
+				newPotentialMotifs.put(pm.getKey(), newlist);
 			}
+			
 		}
-		for(Entry<String, HashMap<Character, List<String>>> pm : newPotentialMotifs.entrySet()) {
-			HashMap values = new HashMap<>();
-			for(Entry<Character, List<String>> attr : pm.getValue().entrySet()) {
-				AttribOperation operation = cvalues.getOperation(charsToValues.get(attr.getKey()).toString());
-				if(operation.equals(AttribOperation.MEAN)) {
-					//IntStream intStream = convertListToStream(attr.getValue());
-					//values.put(attr.getKey(), Arrays.asList(intStream.average()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMedian(attr.getValue()))));
-				}
-				if(operation.equals(AttribOperation.MAX)) {
-					//IntStream intStream = convertListToStream(attr.getValue());
-					//values.put(attr.getKey(), Arrays.asList(intStream.max()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
-				}
-				if(operation.equals(AttribOperation.MIN)) {
-					//IntStream intStream = convertListToStream(attr.getValue());
-					//values.put(attr.getKey(), Arrays.asList(intStream.min()));
-					values.put(attr.getKey(), Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
-				}
-				if(operation.equals(AttribOperation.EQUALS)) {
-					values.put(attr.getKey(), attr.getValue());
-					// in this case I return a list of possible values, i.e. I do nothing
-				}
-			}
-			newPotentialMotifs.get(pm.getKey()).putAll(values);
+	}
+	
+	public boolean hasSameKey(List<HashMap<Character, List<Object>>> a, HashMap<Character, List<Object>> b) {
+		for(HashMap<Character, List<Object>> map: a) {
+			for (Character key: map.keySet()) {
+		        if (map.keySet().equals(b.keySet())) {
+		            return true;
+		        } 
+		    }
 		}
+		return false;
+		
 	}
 	
 	public String printString() {
@@ -283,30 +287,27 @@ public class qPMSPM<T> {
 	
 	public void verifyMotifs() {
 		Set<MotifsVerifierExecutor<T>> threads = new HashSet<MotifsVerifierExecutor<T>>();
-		@SuppressWarnings("unchecked")
-		HashMap<Integer, List<String>>[] partitionedSets = new HashMap[this.threads+1];
-		System.out.println("- tot candidate " + newPotentialMotifs.size() + ", partition size: " + (newPotentialMotifs.size() / this.threads));
 		
-		AtomicInteger counter = new AtomicInteger(0);
-		int i = 0;
-		Map<Boolean, Map<String, HashMap<Character, List<String>>>> collect = newPotentialMotifs.entrySet()
-		    .stream()
-		   .collect(Collectors.partitioningBy(
-		       e -> counter.getAndIncrement() < newPotentialMotifs.size() / 2, // this splits the map into 2 parts
-		       Collectors.toMap(
-		           Map.Entry::getKey, 
-		           Map.Entry::getValue
-		       )
-		   ));
-		System.out.println("Starting thread");
+		List<Map<String, HashMap<Character, String>>> pm = new ArrayList();
+		for(Entry<String, List<HashMap<Character, String>>> el : newPotentialMotifs.entrySet()) {
+			for (HashMap<Character, String> j: el.getValue()) {
+				HashMap t = new HashMap();
+				t.put(el.getKey(), j);
+				pm.add(t);
+			}
+		}
+		System.out.println("- tot candidate " + pm.size() + ", partition size: " + (pm.size() / this.threads));
 		
-		MotifsVerifierExecutor<T> e1 = new MotifsVerifierExecutor<T>(collect.get(true), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
-		threads.add(e1);
-		e1.start();
+		List<List<Map<String, HashMap<Character, String>>>> smallerLists = Lists.partition(pm, pm.size() / this.threads);
 		
-		MotifsVerifierExecutor<T> e2 = new MotifsVerifierExecutor<T>(collect.get(false), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
-		threads.add(e2);
-		e2.start();
+		for (int i = 0; i < smallerLists.size(); i++) {
+			System.out.println("Creating thread for " + smallerLists.get(i).size() + " points...");
+			MotifsVerifierExecutor<T> e = new MotifsVerifierExecutor<T>(smallerLists.get(i), traces, motifMaxDistance, quorum, costs, charsToValues, valuesToChars, cvalues);
+			threads.add(e);
+			e.start();
+			System.out.println("Starting thread");
+			
+		}
 		 
 		for (Thread t : threads) {
 			try {

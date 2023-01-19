@@ -63,7 +63,9 @@ public class MotifsFilter {
 		
 		//Set<Sequence<String>> motifs = new HashSet<Sequence<String>>();
 		//Map<Sequence<String>, HashMap<Character, List<String>>> motifs = new HashMap<>();
-		Map<Sequence<String>, List<HashMap<String, Object>>> motifs = new HashMap<>();
+		
+		//Map<Sequence<String>, List<HashMap<String, Object>>> motifs = new HashMap<>();
+		List<Map<Sequence<String>, HashMap<String, Object>>> motifs = new ArrayList();
 		MotifsFilterExecutor<String, XAttributeMap> mf = new MotifsFilterExecutor<String, XAttributeMap>(c, a);
 		
 		XParser parser = new XesXmlParser();
@@ -88,8 +90,8 @@ public class MotifsFilter {
 		time = System.currentTimeMillis();
 		System.out.print("2. Parsing motifs... ");
 		XLog logMotifs = parser.parse(new File(motifsFile)).get(0);
-		
 		for (XTrace t : logMotifs) {
+			
 			Sequence<String> s = new Sequence<String>();
 			HashMap<String, Object> attr = new HashMap();
 			for (XEvent e : t) {
@@ -102,19 +104,10 @@ public class MotifsFilter {
 				}
 			}
 			// at the end of the trace I have to add the motif and the attributes
-			if(motifs.containsKey(s)) {
-				// if the motif already exists, check if the set of attributes already exists
-				List<HashMap<String, Object>> attributes = motifs.get(s);
-				attributes.add(attr);
-				motifs.put(s, attributes);
-				mf.addMotif(s, attributes);
-			} else {
-				// the element is completely new
-				List<HashMap<String, Object>> attributes = new ArrayList<>();
-				attributes.add(attr);
-				motifs.put(s, attributes);
-				mf.addMotif(s, attributes);
-			}
+			HashMap newmotif = new HashMap();
+			newmotif.put(s, attr);
+			//motifs.add(newmotif);
+			mf.addMotif(s, attr);
 		}
 		
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");

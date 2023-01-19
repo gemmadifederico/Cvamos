@@ -29,8 +29,9 @@ public class MotifsFilterExecutor <T, K> {
 	private static final char TO_REPLACE = '!';
 	private Set<Pair<String, Sequence<K>>> strings;
 	//private Set<Pair<String, Sequence<K>>> motifs;
-	//private Set<Pair< Pair<String, Sequence<K>>, List<HashMap<Character, Object>>>> motifs;
-	private Map<String, List<HashMap<Character, Object>>> motifs;
+	//private Set<Pair< Pair<String, Sequence<K>>, List<HashMap<Character, Object>>>> motifs
+	//private Map<String, List<HashMap<Character, Object>>> motifs;
+	private List<Map<String, HashMap<Character, String>>> motifs;
 	private CostMapping<T> costs;
 	private AttributeMapping<T> attributes;
 	private Map<Character, T> charsToValues;
@@ -39,13 +40,13 @@ public class MotifsFilterExecutor <T, K> {
 	
 	public MotifsFilterExecutor(CostMapping<T> costs, AttributeMapping<T> attributes) {
 		this.strings = new HashSet<Pair<String, Sequence<K>>>();	
-		this.motifs = new HashMap<String, List<HashMap<Character, Object>>>();
+		this.motifs = new ArrayList<Map<String, HashMap<Character, String>>>();
 		//this.motifs = new HashSet<Pair<String, Sequence<K>>>();
 		this.charsToValues = new HashMap<Character, T>();
 		this.valuesToChars = new HashMap<T, Character>();
 		this.costs = costs;
 		this.attributes = attributes;
-		this.traces = new ArrayList<>();
+		this.traces = new ArrayList<>(); 
 	}
 	
 	public void addTrace(XTrace t) {
@@ -66,7 +67,7 @@ public class MotifsFilterExecutor <T, K> {
 		return strings.add(Pair.of(s, attributes));
 	}
 	
-	public void addMotif(Sequence<T> motif,  List<HashMap<String, Object>> motifAttributes) {
+	public void addMotif(Sequence<T> motif,  HashMap<String, Object> attr) {
 		String s = "";
 		for (int i = 0; i < motif.size(); i++) {
 			T t = motif.get(i);
@@ -78,25 +79,21 @@ public class MotifsFilterExecutor <T, K> {
 			s += valuesToChars.get(t);
 		} 
 		
-			List<HashMap<Character, Object>> convertedMotifAttributes = new ArrayList();
-			
-			for(HashMap<String, Object> m : motifAttributes) {
-				HashMap<Character, Object> temp = new HashMap();
-				for(Entry<String, Object> entry : m.entrySet()) {
-					// if the converting set doesn't contain the attrib names, add them
-					if (!valuesToChars.containsKey(entry.getKey())) {
-						char v = (char) ('@' + valuesToChars.size() + 1);
-						valuesToChars.put((T) entry.getKey(), v);
-						charsToValues.put(v, (T) entry.getKey());
-					}
-					// and then add the attributes converted to the new hashmap
-					temp.put(valuesToChars.get(entry.getKey()), entry.getValue());
+		HashMap<Character, Object> convertedMotifAttributes = new HashMap();
+		
+			for(Entry<String, Object> entry : attr.entrySet()) {
+				// if the converting set doesn't contain the attrib names, add them
+				if (!valuesToChars.containsKey(entry.getKey())) {
+					char v = (char) ('@' + valuesToChars.size() + 1);
+					valuesToChars.put((T) entry.getKey(), v);
+					charsToValues.put(v, (T) entry.getKey());
 				}
-				//System.err.println(motifs.toString());
-				convertedMotifAttributes.add(temp);
+				// and then add the attributes converted to the new hashmap
+				convertedMotifAttributes.put(valuesToChars.get(entry.getKey()), entry.getValue().toString());
 			}
-			
-			motifs.put(s, convertedMotifAttributes);
+		HashMap temp = new HashMap();
+		temp.put(s, convertedMotifAttributes);
+		motifs.add(temp);
 	}
 	
 	public Set<Triple<XAttribute, Sequence<T>, Sequence<K>>> filter(double maxDistance, T replace) {
@@ -111,12 +108,14 @@ public class MotifsFilterExecutor <T, K> {
 		}*/
 		HammingDistance<T> hamming = new HammingDistance<T>(costs, attributes, charsToValues);
 		Set<Triple<XAttribute, Sequence<T>, Sequence<K>>> toReturn = new HashSet<Triple<XAttribute, Sequence<T>, Sequence<K>>>();
-		int motifLength = motifs.entrySet().iterator().next().getKey().length();
+		int motifLength = motifs.get(0).entrySet().iterator().next().getKey().length();
+		//int motifLength = motifs.entrySet().iterator().next().getKey().length();
 		for(XTrace trace : traces) {
 			List<Pair<Integer, Integer>> indexesWithMotifs = new ArrayList<>();
 			int sIndex = 0;
 			int eIndex = sIndex;
-			for(Entry<String, List<HashMap<Character, Object>>> motifPair : motifs.entrySet()) {
+			for(Map<String, HashMap<Character, String>> el : motifs) {
+			for(Entry<String, HashMap<Character, String>> motifPair : el.entrySet()) {
 				// m is the motif
 				String m = motifPair.getKey();
 				int counter = 0;
@@ -139,30 +138,25 @@ public class MotifsFilterExecutor <T, K> {
 					
 					if(counter == motifLength) {
 						if (hamming.distance(str, m) <= maxDistance) {
-							HashMap<Character,  List<String>> aggAttrib = aggregateAttributes(attrib);
-							//System.out.println(aggAttrib + " ---- " + m.getValue().toString());
-							for(HashMap<Character, Object> el : motifPair.getValue()) {
-								HashMap<Character,  List<String>> temp = new HashMap();
-								for(Entry<Character, Object> x : el.entrySet()) {
-									temp.put(x.getKey(), Arrays.asList(x.getValue().toString()));
-								}
-								if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, temp) <= maxDistance) {
-									//System.out.println("motif found");
-									indexesWithMotifs.add(Pair.of(sIndex, eIndex));
-									sIndex = eIndex;
-									j = eIndex+1;
-								} else {
-									//System.err.println("there is a match but not in attributes");
-									sIndex += 1;
-									j = sIndex;
-								}
+							HashMap<Character,  String> aggAttrib = aggregateAttributes(attrib);
+							if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, motifPair.getValue()) <= maxDistance) {
+								//System.out.println("motif found");
+								indexesWithMotifs.add(Pair.of(sIndex, eIndex));
+								sIndex = eIndex;
+								j = eIndex+1;
+							} else {
+								//System.err.println("there is a match but not in attributes");
+								sIndex += 1;
+								j = sIndex;
+								
 							}
 						} else {
 							sIndex += 1;
 							j = sIndex;
 						}
 						counter = 0;
-						str = "";						
+						str = "";
+						attrib.clear();
 					} else {
 						j++;
 					}
@@ -220,7 +214,7 @@ public class MotifsFilterExecutor <T, K> {
 				Triple<XAttribute, Sequence<T>, Sequence<K>> triplet = Triple.of(trace.getAttributes().get("concept:name"), recomposedTrace, attributes);
 				toReturn.add(triplet);
 				//System.out.println("indexes with motifs" + indexesWithMotifs);
-			}
+			}}
 		}
 		/*for (Pair<String, Sequence<K>> pair : strings) {
 			// this is the new trace that I'm going to populate
@@ -300,24 +294,24 @@ public class MotifsFilterExecutor <T, K> {
 		return toReturn;
 	}
 
-	private HashMap<Character, List<String>> aggregateAttributes(HashMap<Character, List<String>> attrib) {
+	private HashMap<Character, String> aggregateAttributes(HashMap<Character, List<String>> attrib) {
 		HashMap aggAttribs = new HashMap<>();
 		for(Entry<Character, List<String>> attr : attrib.entrySet()) {
 			Character attrChar = attr.getKey();
 			AttribOperation operation = attributes.getOperation(attr.getKey().toString());
 			if(operation.equals(AttribOperation.MEAN)) {
 				DoubleStream intStream = Operations.convertListToStream(attr.getValue());
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMedian(attr.getValue()))));
+				aggAttribs.put(attrChar, String.valueOf(Operations.calculateMedianString(attr.getValue())));
 			}
 			if(operation.equals(AttribOperation.MAX)) {
 				//IntStream intStream = convertListToStream(attr.getValue());
 				//aggAttribs.put(attrChar, Arrays.asList(intStream.max()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMax(attr.getValue()))));
+				aggAttribs.put(attrChar, String.valueOf(Operations.calculateMaxString(attr.getValue())));
 			}
 			if(operation.equals(AttribOperation.MIN)) {
 				// IntStream intStream = convertListToStream(attr.getValue());
 				// aggAttribs.put(attrChar, Arrays.asList(intStream.min()));
-				aggAttribs.put(attrChar, Arrays.asList(String.valueOf(Operations.calculateMin(attr.getValue()))));
+				aggAttribs.put(attrChar,String.valueOf(Operations.calculateMinString(attr.getValue())));
 			}
 			if(operation.equals(AttribOperation.EQUALS)) {
 				aggAttribs.put(attrChar, attr.getValue());
