@@ -46,7 +46,7 @@ public class qPMSPM<T> {
 	private int threads;
 	private Map<String, List<HashMap<Character, List<Object>>>> potentialMotifs;
 	private Map<String, List<HashMap<Character, String>>> newPotentialMotifs;
-	private Map<String,HashMap<Character, String>>verifiedMotifs;
+	private List<Map<String,HashMap<Character, String>>>verifiedMotifs;
 	private List<Map.Entry<XAttribute, XAttribute>> newstrings;
 	private Set<String> strings;
 	private CostMapping<T> costs;
@@ -62,7 +62,7 @@ public class qPMSPM<T> {
 		this.quorum = q;
 		this.threads = threads;
 		this.potentialMotifs = new HashMap<>();
-		this.verifiedMotifs = new HashMap<>();
+		this.verifiedMotifs = new ArrayList<>();
 		this.strings = new HashSet<String>();
 		this.costs = costs;
 		this.cvalues = a;
@@ -88,13 +88,11 @@ public class qPMSPM<T> {
 		return motifs;
 	}
 	
-	public Set<String> getStringMotifs() {
-		return verifiedMotifs.keySet();
-	}
 	
-	public Map<Sequence<T>, Map<T, String>> getMotifs() {
-		Map<Sequence<T>, Map<T, String>> motifs = new HashMap();
-		for (Entry<String, HashMap<Character, String>> s : verifiedMotifs.entrySet()) {
+	public List<Map<Sequence<T>, Map<T, String>>> getMotifs() {
+		List<Map<Sequence<T>, Map<T, String>>> motifs = new ArrayList();
+		for (Map<String, HashMap<Character, String>> vm : verifiedMotifs) {
+		for (Entry<String, HashMap<Character, String>> s : vm.entrySet()) {
 			// for each motif --> attribs, I convert the motif name again to values
 			//for(Entry<Character, List<String>> attribs : s.getValue().entrySet()) {
 				Sequence<T> seq = new Sequence<T>();
@@ -109,9 +107,11 @@ public class qPMSPM<T> {
 					T seq2 = charsToValues.get(el.getKey());
 					temp.put(seq2, el.getValue());
 				}
-				
-				motifs.put(seq, temp);
+				Map<Sequence<T>, Map<T, String>> motiftemp = new HashMap();
+				motiftemp.put(seq, temp);
+				motifs.add(motiftemp);
 			//}
+		}
 		}
 		return motifs;
 	}
@@ -318,7 +318,7 @@ public class qPMSPM<T> {
 		}
 		
 		for (MotifsVerifierExecutor<T> t : threads) {
-			verifiedMotifs.putAll(t.getVerifiedMotifs());
+			verifiedMotifs.addAll(t.getVerifiedMotifs());
 		}
 		
 		

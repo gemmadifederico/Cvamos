@@ -91,10 +91,9 @@ public class MotifsFilter {
 		System.out.print("2. Parsing motifs... ");
 		XLog logMotifs = parser.parse(new File(motifsFile)).get(0);
 		for (XTrace t : logMotifs) {
-			
 			Sequence<String> s = new Sequence<String>();
 			HashMap<String, Object> attr = new HashMap();
-			for (XEvent e : t) {
+			for (XEvent e : t) {  
 				String envname = XConceptExtension.instance().extractName(e);
 				if(a.contains(envname)) {
 					// this is an env variable

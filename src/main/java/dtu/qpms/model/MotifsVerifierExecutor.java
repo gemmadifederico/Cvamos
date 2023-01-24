@@ -27,7 +27,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 
 	//private Set<String> potentialMotifs;
 	private List<Map<String, HashMap<Character, String>>> potentialMotifs;
-	private Map<String, HashMap<Character, String>> verifiedMotifs;
+	private List<Map<String, HashMap<Character, String>>> verifiedMotifs;
 	private Map<String, List<HashMap<Character, Object>>> tempVerifiedMotifs;
 	private Collection<String> strings;
 	private double motifMaxDistance;
@@ -49,7 +49,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 			Map<T, Character> valuesToChar,
 			AttributeMapping<T> cvalues) {
 		this.potentialMotifs = newPotentialMotifs;
-		this.verifiedMotifs = new HashMap<>();
+		this.verifiedMotifs = new ArrayList<>();
 		this.tempVerifiedMotifs = new HashMap();
 		//this.strings = strings;
 		this.traces = traces;
@@ -61,7 +61,7 @@ public class MotifsVerifierExecutor<T> extends Thread{
 		this.valuesToChar = valuesToChar;
 	}
 	
-	public Map<String, HashMap<Character, String>> getVerifiedMotifs() {
+	public List<Map<String, HashMap<Character, String>>> getVerifiedMotifs() {
 		return verifiedMotifs;
 	}
 
@@ -71,7 +71,6 @@ public class MotifsVerifierExecutor<T> extends Thread{
 	}
 	
 	public void verifyMotifs() {
-		this.verifiedMotifs = new HashMap<>();
 //			int motifsFound = 0;
 		for (Map<String, HashMap<Character, String>> l : potentialMotifs) {
 			for(Entry<String, HashMap<Character, String>> m : l.entrySet()) {
@@ -87,7 +86,9 @@ public class MotifsVerifierExecutor<T> extends Thread{
 					}
 				}
 				if (stringsWithMotif / traces.size() >= quorum) {
-					verifiedMotifs.put(m.getKey(), m.getValue());
+					HashMap tempmotif = new HashMap<>();
+					tempmotif.put(m.getKey(), m.getValue());
+					this.verifiedMotifs.add(tempmotif);
 	//				motifsFound++;
 				}
 			}
@@ -100,7 +101,6 @@ public class MotifsVerifierExecutor<T> extends Thread{
 	private boolean verifyMotifInStringOld(XTrace string, Entry<String,HashMap<Character, String>> m, double maxDistance) {
 		int motifLength = m.getKey().length();
 		int stringLength = string.size();
-		//System.err.println(m);
 		// generate all the substrings of the strings
 		String traceToString = "";
 		if (stringLength >= motifLength) {
@@ -145,7 +145,6 @@ public class MotifsVerifierExecutor<T> extends Thread{
 							// now the list of attributes is complex, indeed attrib is a list of elements that needs to be aggregated before to be compared to the motif attribs
 							HashMap<Character, String> aggAttrib = aggregateAttributes(attrib);
 							// If the set of attributes of the compared string is empty, there is a match anyway
-							//System.out.println(aggAttrib + " ---- " + m.getValue().toString());
 							if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, m.getValue()) <= maxDistance) {
 								return true;
 							} else {

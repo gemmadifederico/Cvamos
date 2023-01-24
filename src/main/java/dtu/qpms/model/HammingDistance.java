@@ -37,7 +37,6 @@ public class HammingDistance<T> {
 		// given each pair motif+list of attributes, we compare it with the actual substring+list of attributes
 		// in particular, we have to check if the attributes in the motif are contained in the list of attributes of the substring
 		// and that their values are more or less similar.
-		
 		if(stringAttribs.isEmpty()) {
 			if(list.isEmpty()) {
 				totDistance = 0;
@@ -48,7 +47,7 @@ public class HammingDistance<T> {
 	        	// now I have to check the values
 	        	for(Entry<Character, String> b : list.entrySet()) {
 		        	double tolerance = attribs.getTolerance(map.get(b.getKey()));
-		        	/* System.out.println("comparing: " + Double.parseDouble(b.getValue()) + 
+		        	/*System.out.println("comparing: " + Double.parseDouble(b.getValue()) + 
 					" with: " + Double.parseDouble(stringAttribs.get(b.getKey()))
 					+ "tolerance: " + tolerance); */
 						if((Double.parseDouble(b.getValue()) - tolerance) <= (Double.parseDouble(stringAttribs.get(b.getKey()))) &&

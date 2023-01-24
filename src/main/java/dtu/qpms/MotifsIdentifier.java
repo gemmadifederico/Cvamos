@@ -142,7 +142,8 @@ public class MotifsIdentifier {
 		int motifCounter = 1;
 		XLog logMotifs = XLogHelper.generateNewXLog("motifs");
 		SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-		for(Entry<Sequence<String>, Map<String, String>> seq : p.getMotifs().entrySet()) {
+		for(Map<Sequence<String>, Map<String, String>> vm : p.getMotifs()) {
+		for(Entry<Sequence<String>, Map<String, String>> seq : vm.entrySet()) {
 			XTrace t = XLogHelper.createTrace("case_" + motifCounter);
 			// inserting the events
 			for (String s : seq.getKey()) {
@@ -159,6 +160,8 @@ public class MotifsIdentifier {
 			logMotifs.add(t);
 			motifCounter++;
 		}
+		
+	}
 		XSerializer serializer = new XesXmlSerializer();
 		serializer.serialize(logMotifs, new FileOutputStream(outputFile));
 		System.out.println("Done! - " + (System.currentTimeMillis() - time) + "ms");

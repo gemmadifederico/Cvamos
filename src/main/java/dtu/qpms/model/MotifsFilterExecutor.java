@@ -111,6 +111,7 @@ public class MotifsFilterExecutor <T, K> {
 		int motifLength = motifs.get(0).entrySet().iterator().next().getKey().length();
 		//int motifLength = motifs.entrySet().iterator().next().getKey().length();
 		for(XTrace trace : traces) {
+			System.out.println("\n trace: " + trace.getAttributes().get("concept:name"));
 			List<Pair<Integer, Integer>> indexesWithMotifs = new ArrayList<>();
 			int sIndex = 0;
 			int eIndex = sIndex;
@@ -140,7 +141,7 @@ public class MotifsFilterExecutor <T, K> {
 						if (hamming.distance(str, m) <= maxDistance) {
 							HashMap<Character,  String> aggAttrib = aggregateAttributes(attrib);
 							if (aggAttrib.isEmpty() | hamming.distanceAttributes(aggAttrib, motifPair.getValue()) <= maxDistance) {
-								//System.out.println("motif found");
+								//System.out.println("motif found " + sIndex + " " + eIndex);
 								indexesWithMotifs.add(Pair.of(sIndex, eIndex));
 								sIndex = eIndex;
 								j = eIndex+1;
@@ -151,13 +152,16 @@ public class MotifsFilterExecutor <T, K> {
 								
 							}
 						} else {
+							//System.err.println("hamming not satisfied");
 							sIndex += 1;
 							j = sIndex;
+							eIndex = sIndex;
 						}
 						counter = 0;
 						str = "";
 						attrib.clear();
 					} else {
+						//System.out.println("sindex " + sIndex+ " eindex" + eIndex);
 						j++;
 					}
 				}
@@ -213,9 +217,10 @@ public class MotifsFilterExecutor <T, K> {
 				//System.err.println("The recomposed trace is the following" + trace.getAttributes().get("concept:name")+ recomposedTrace);
 				Triple<XAttribute, Sequence<T>, Sequence<K>> triplet = Triple.of(trace.getAttributes().get("concept:name"), recomposedTrace, attributes);
 				toReturn.add(triplet);
-				//System.out.println("indexes with motifs" + indexesWithMotifs);
+				System.out.println("indexes with motifs" + indexesWithMotifs);
 			}}
 		}
+		
 		/*for (Pair<String, Sequence<K>> pair : strings) {
 			// this is the new trace that I'm going to populate
 			String newtrace = "";
