@@ -23,6 +23,7 @@ import org.deckfour.xes.model.XTrace;
 
 import dtu.qpms.model.AttributeMapping.AttribOperation;
 import dtu.qpms.utils.Operations;
+import dtu.qpms.utils.XLogHelper;
 
 public class MotifsFilterExecutor <T, K> {
 
@@ -111,7 +112,7 @@ public class MotifsFilterExecutor <T, K> {
 		int motifLength = motifs.get(0).entrySet().iterator().next().getKey().length();
 		//int motifLength = motifs.entrySet().iterator().next().getKey().length();
 		for(XTrace trace : traces) {
-			System.out.println("\n trace: " + trace.getAttributes().get("concept:name"));
+			// System.out.println("\n trace: " + trace.getAttributes().get("concept:name"));
 			List<Pair<Integer, Integer>> indexesWithMotifs = new ArrayList<>();
 			int sIndex = 0;
 			int eIndex = sIndex;
@@ -175,6 +176,29 @@ public class MotifsFilterExecutor <T, K> {
 						attributes.add((K) trace.get(p).getAttributes());
 					}
 				}
+				int start = 0;
+				for(Pair<Integer, Integer> pair : indexesWithMotifs) {
+					int mstart = pair.getLeft();
+					if(mstart>start) {
+						for(int i=start; i<mstart; i++) {
+							recomposedTrace.add((T) XConceptExtension.instance().extractName(trace.get(i)));
+							attributes.add((K) trace.get(i).getAttributes());
+						}
+					}
+					
+					recomposedTrace.add(replace);
+					attributes.add((K) trace.get(mstart).getAttributes());
+					start = pair.getRight();
+					
+					// if the pair is the last index, then add all the remaining of the trace
+					if(indexesWithMotifs.indexOf(pair) == (indexesWithMotifs.size()-1)) {
+						for (int k =pair.getRight(); k<trace.size(); k++) {
+							recomposedTrace.add((T) XConceptExtension.instance().extractName(trace.get(k)));
+							attributes.add((K) trace.get(k).getAttributes());
+						}
+					}
+				}
+				/*
 				for(Pair<Integer, Integer> pair : indexesWithMotifs) {
 					//System.out.println("The pair is" + pair);
 					int start = pair.getLeft();
@@ -213,11 +237,11 @@ public class MotifsFilterExecutor <T, K> {
 					// so I take the events until I reach the start value of the first pair, and put them in the new trace
 					// then I put the motif
 					// then I start again looping through the trace but starting from the endvalue + 1
-				}
-				//System.err.println("The recomposed trace is the following" + trace.getAttributes().get("concept:name")+ recomposedTrace);
+				}*/
+
+				//System.err.println("The recomposed trace is the following" + trace.size() +" " + trace.getAttributes().get("concept:name")+ recomposedTrace + " size:" + recomposedTrace.size());
 				Triple<XAttribute, Sequence<T>, Sequence<K>> triplet = Triple.of(trace.getAttributes().get("concept:name"), recomposedTrace, attributes);
 				toReturn.add(triplet);
-				System.out.println("indexes with motifs" + indexesWithMotifs);
 			}}
 		}
 		
